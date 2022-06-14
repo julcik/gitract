@@ -2,7 +2,6 @@ import argparse
 import os
 import glob
 
-import mmcv
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -128,10 +127,10 @@ def main():
     args = parse_args()
     data_path = Path(args.data_path)
     out_dir = Path(args.out_dir) if args.out_dir else data_path
-    mmcv.mkdir_or_exist(out_dir)
-    mmcv.mkdir_or_exist(out_dir / "images")
-    mmcv.mkdir_or_exist(out_dir / "labels")
-    mmcv.mkdir_or_exist(out_dir / "splits")
+    out_dir.mkdir(exist_ok=True)
+    (out_dir / "images").mkdir(exist_ok=True)
+    (out_dir / "labels").mkdir(exist_ok=True)
+    (out_dir / "splits").mkdir(exist_ok=True)
 
     df_train = parse_train(data_path)
     print(df_train)
