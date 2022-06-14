@@ -82,6 +82,8 @@ def train(
         min_lr=min_lr,
     )
 
+    if device == "cpu":
+        gpus = 0
     trainer = pl.Trainer(
         # fast_dev_run=fast_dev_run,
         accelerator=device,

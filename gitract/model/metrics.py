@@ -3,8 +3,10 @@ from torchmetrics import Metric
 import torch
 
 class DiceMetric(Metric):
-    def __init__(self):
+    def __init__(self, classes):
         super().__init__()
+
+        self.classes = classes
 
         self.post_processing = monai.transforms.Compose(
             [
@@ -19,4 +21,5 @@ class DiceMetric(Metric):
         self.dice.append(monai.metrics.compute_meandice(y_pred, y_true))
 
     def compute(self):
-        return torch.mean(torch.stack(self.dice))
+        metric = torch.nanmean(torch.stack(self.dice).flatten(end_dim=-2), dim=0)
+        return {self.classes[clz]:metric[clz] for clz in range(len(self.classes))}

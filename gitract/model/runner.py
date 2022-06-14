@@ -21,6 +21,7 @@ class LitModule(pl.LightningModule):
             model: str = "smpFPN"
     ):
         super().__init__()
+        self.classes = ['large_bowel', 'small_bowel', 'stomach']
 
         self.save_hyperparameters()
 
@@ -51,8 +52,8 @@ class LitModule(pl.LightningModule):
         return monai.losses.DiceLoss(sigmoid=True)
 
     def _init_metrics(self):
-        val_metrics = MetricCollection({"val_dice": DiceMetric()})
-        test_metrics = MetricCollection({"test_dice": DiceMetric()})
+        val_metrics = MetricCollection({"val_dice": DiceMetric(classes = self.classes)}, prefix='val/Dice.')
+        test_metrics = MetricCollection({"test_dice": DiceMetric(classes = self.classes)})
 
         return torch.nn.ModuleDict(
             {
@@ -112,6 +113,7 @@ class LitModule(pl.LightningModule):
         self.log(f"{stage}_loss", loss, on_step=on_step, on_epoch=True, prog_bar=True, batch_size=batch_size)
 
         if metrics is not None:
+            print(metrics)
             self.log_dict(metrics, on_step=on_step, on_epoch=True, batch_size=batch_size)
 
     @classmethod
