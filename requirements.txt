@@ -8,3 +8,4 @@ segmentation_models_pytorch
 albumentations
 monai
 pytorch-lightning
+click
