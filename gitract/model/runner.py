@@ -57,7 +57,7 @@ class LitModule(pl.LightningModule):
                            in_channels=3)
 
     def _init_loss_fn(self):
-        return monai.losses.DiceLoss(sigmoid=True)
+        return [monai.losses.DiceLoss(sigmoid=True), monai.losses.FocalLoss(gamma=2)]
 
     def _init_metrics(self):
         val_metrics = MetricCollection({"val_dice": DiceMetric(classes = self.classes)}, prefix='val/Dice.')
@@ -99,7 +99,7 @@ class LitModule(pl.LightningModule):
         images, masks = batch["image"], batch["masks"]
         y_pred = self(images)
 
-        loss = self.loss_fn(y_pred, masks)
+        loss = sum([func(y_pred, masks) for func in self.loss_fn])
 
         if stage != "train":
             self.metrics[f"{stage}_metrics"].update(y_pred, masks)
