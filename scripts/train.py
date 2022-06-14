@@ -27,7 +27,7 @@ SCHEDULER = None
 MIN_LR = 1e-6
 
 FAST_DEV_RUN = False # Debug training
-GPUS = 0
+GPUS = -1
 MAX_EPOCHS = 30
 PRECISION = 32
 
