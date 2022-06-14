@@ -18,8 +18,8 @@ class DiceMetric(Metric):
 
     def update(self, y_pred, y_true):
         y_pred = self.post_processing(y_pred)
-        self.dice.append(monai.metrics.compute_meandice(y_pred, y_true))
+        self.dice.extend(monai.metrics.compute_meandice(y_pred, y_true))
 
     def compute(self):
-        metric = torch.nanmean(torch.stack(self.dice).flatten(end_dim=-2), dim=0)
+        metric = torch.mean(torch.nan_to_num(torch.stack(self.dice)), dim=0)
         return {self.classes[clz]:metric[clz] for clz in range(len(self.classes))}

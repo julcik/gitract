@@ -18,7 +18,7 @@ class LitModule(pl.LightningModule):
             T_max: int,
             T_0: int,
             min_lr: int,
-            model: str = "smpFPN"
+            model: str = "smpUnet"
     ):
         super().__init__()
         self.classes = ['large_bowel', 'small_bowel', 'stomach']
@@ -44,7 +44,15 @@ class LitModule(pl.LightningModule):
                 # num_res_units=2,
             )
         elif self.hparams.model == "smpFPN":
-            return smp.FPN('efficientnet-b4',
+            return smp.FPN('efficientnet-b2',
+                           classes=3,
+                           in_channels=3)
+        elif self.hparams.model == "smpUnet":
+            return smp.Unet('efficientnet-b2',
+                           classes=3,
+                           in_channels=3)
+        elif self.hparams.model == "smpUnetPP":
+            return smp.UnetPlusPlus('efficientnet-b2',
                            classes=3,
                            in_channels=3)
 
@@ -66,13 +74,10 @@ class LitModule(pl.LightningModule):
         optimizer = torch.optim.Adam(params=self.parameters(), lr=self.hparams.learning_rate,
                                      weight_decay=self.hparams.weight_decay)
 
-        if self.hparams.scheduler is not None:
-            if self.hparams.scheduler == "CosineAnnealingLR":
-                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        if self.hparams.scheduler is None:
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                     optimizer, T_max=self.hparams.T_max, eta_min=self.hparams.min_lr
-                )
-            else:
-                raise ValueError(f"Unknown scheduler: {self.hparams.scheduler}")
+            )
 
             return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
         else:
@@ -97,23 +102,27 @@ class LitModule(pl.LightningModule):
         loss = self.loss_fn(y_pred, masks)
 
         if stage != "train":
-            metrics = self.metrics[f"{stage}_metrics"](y_pred, masks)
-        else:
-            metrics = None
+            self.metrics[f"{stage}_metrics"].update(y_pred, masks)
 
         if log:
             batch_size = images.shape[0]
-            self._log(loss, batch_size, metrics, stage)
+            self._log(loss, batch_size, None, stage)
 
         return loss
+
+    def on_validation_epoch_end(self) -> None:
+        metric = self.metrics[f"val_metrics"]
+        metric_val = metric.compute()
+        print(metric_val)
+        self.log_dict(metric_val, on_step=False, on_epoch=True)
+        metric.reset()
 
     def _log(self, loss, batch_size, metrics, stage):
         on_step = True if stage == "train" else False
 
-        self.log(f"{stage}_loss", loss, on_step=on_step, on_epoch=True, prog_bar=True, batch_size=batch_size)
+        self.log(f"{stage}/loss", loss, on_step=on_step, prog_bar=True, batch_size=batch_size)
 
         if metrics is not None:
-            print(metrics)
             self.log_dict(metrics, on_step=on_step, on_epoch=True, batch_size=batch_size)
 
     @classmethod

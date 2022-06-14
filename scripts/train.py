@@ -21,12 +21,11 @@ VAL_FOLD = 0
 BATCH_SIZE = 32
 NUM_WORKERS = 6
 OPTIMIZER = "Adam"
-LEARNING_RATE = 2e-3
-WEIGHT_DECAY = 1e-6
+LEARNING_RATE = 1e-3
+WEIGHT_DECAY = 0.05
 SCHEDULER = None
-MIN_LR = 1e-6
+MIN_LR = 1e-8
 
-FAST_DEV_RUN = False # Debug training
 GPUS = -1
 MAX_EPOCHS = 30
 PRECISION = 32
@@ -57,7 +56,6 @@ def train(
         min_lr: float = MIN_LR,
         device: str = DEVICE,
         gpus: int = GPUS,
-        fast_dev_run: bool = FAST_DEV_RUN,
         max_epochs: int = MAX_EPOCHS,
         precision: int = PRECISION,
         debug: bool = DEBUG,
