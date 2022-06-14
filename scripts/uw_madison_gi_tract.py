@@ -135,7 +135,7 @@ def main():
 
     df_train = parse_train(data_path)
     print(df_train)
-    # make_2_5_d(df_train, out_dir)
+    make_2_5_d(df_train, out_dir)
     split(out_dir)
 
 if __name__ == '__main__':
