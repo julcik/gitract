@@ -4,6 +4,9 @@ import pytorch_lightning as pl
 from gitract.data.data_module import LitDataModule
 from gitract.model.runner import LitModule
 import click
+from pytorch_lightning.loggers import TensorBoardLogger
+
+
 
 KAGGLE_DIR = Path("/") / "kaggle"
 INPUT_DIR = KAGGLE_DIR / "input"
@@ -34,14 +37,16 @@ THR = 0.45
 DEBUG = False # Debug complete pipeline
 
 @click.command()
+@click.option('--out_dir')
 @click.option('--data_path', default="../mmseg_train/splits/fold_0.csv")
 @click.option('--holdout_path', default="../mmseg_train/splits/holdout_0.csv")
 @click.option('--batch_size', default=BATCH_SIZE)
 @click.option('--num_workers', default=NUM_WORKERS)
 @click.option('--learning_rate', default=LEARNING_RATE)
 @click.option('--max_epochs', default=MAX_EPOCHS)
+@click.option('--device', default=DEVICE)
 def train(
-
+        out_dir,
         data_path: str,
         holdout_path: str,
         batch_size: int,
@@ -58,6 +63,7 @@ def train(
         debug: bool = DEBUG,
         random_seed: int = RANDOM_SEED,
 ):
+    out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
 
     data_module = LitDataModule(
@@ -81,7 +87,8 @@ def train(
         accelerator=device,
         gpus=gpus,
         log_every_n_steps=10,
-        logger=pl.loggers.CSVLogger(save_dir='logs/'),
+        logger=[pl.loggers.CSVLogger(save_dir=out_dir/'logs/'),
+                TensorBoardLogger(out_dir, name="tb_logs")],
         max_epochs=max_epochs,
         precision=precision,
     )
