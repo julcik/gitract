@@ -1,0 +1,10 @@
+matplotlib
+numpy
+packaging
+prettytable
+timm
+einops
+segmentation_models_pytorch
+albumentations
+monai
+pytorch-lightning
