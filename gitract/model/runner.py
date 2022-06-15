@@ -2,12 +2,12 @@ import pytorch_lightning as pl
 from typing import Optional, Callable
 import pandas as pd
 import monai
-from monai.data import CSVDataset
-from monai.data import DataLoader
 import torch
 from torchmetrics import MetricCollection
 from gitract.model.metrics import DiceMetric
 import segmentation_models_pytorch as smp
+import numpy as np
+from PIL import Image
 
 class LitModule(pl.LightningModule):
     def __init__(
@@ -18,7 +18,7 @@ class LitModule(pl.LightningModule):
             T_max: int,
             T_0: int,
             min_lr: int,
-            model: str = "smpUnet"
+            model: str = "unet", #"smpUnet"
     ):
         super().__init__()
         self.classes = ['large_bowel', 'small_bowel', 'stomach']
@@ -48,7 +48,7 @@ class LitModule(pl.LightningModule):
                            classes=3,
                            in_channels=3)
         elif self.hparams.model == "smpUnet":
-            return smp.Unet('efficientnet-b2',
+            return smp.Unet('efficientnet-b0',
                            classes=3,
                            in_channels=3)
         elif self.hparams.model == "smpUnetPP":
@@ -57,7 +57,24 @@ class LitModule(pl.LightningModule):
                            in_channels=3)
 
     def _init_loss_fn(self):
-        return [monai.losses.DiceLoss(sigmoid=True), monai.losses.FocalLoss(gamma=2)]
+        # dist_mat = np.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.5], [1.0, 0.5, 0.0]], dtype=np.float32)
+#         return [#monai.losses.DiceLoss(sigmoid=True),
+#                 monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True, batch=True, squared_pred=True,
+# to_onehot_y=False, lambda_dice=0.2),
+#                 # monai.losses.GeneralizedWassersteinDiceLoss(dist_mat),
+#                 # monai.losses.FocalLoss(gamma=2)
+#         ]
+
+        return [smp.losses.TverskyLoss(mode="multilabel",
+                                       classes=None,
+                                       log_loss=True,
+                                       from_logits=True,
+                                       smooth=0.0,
+                                       ignore_index=None,
+                                       eps=1e-07,
+                                       alpha=0.5,
+                                       beta=0.5,
+                                       gamma=1.0)]
 
     def _init_metrics(self):
         val_metrics = MetricCollection({"val_dice": DiceMetric(classes = self.classes)}, prefix='val/Dice.')
