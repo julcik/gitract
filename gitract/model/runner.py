@@ -33,6 +33,7 @@ class LitModule(pl.LightningModule):
         self.metrics = self._init_metrics()
 
     def _init_model(self):
+        print(f"Init {self.hparams.model}")
         if self.hparams.model == "unet":
             return monai.networks.nets.UNet(
                 spatial_dims=2,
@@ -49,23 +50,19 @@ class LitModule(pl.LightningModule):
                            in_channels=3)
         elif self.hparams.model == "smpUnet":
             return smp.Unet('efficientnet-b0',
-                           classes=3,
-                           in_channels=3)
+                            encoder_weights = "imagenet",
+                            classes=3,
+                            in_channels=3)
         elif self.hparams.model == "smpUnetPP":
             return smp.UnetPlusPlus('efficientnet-b2',
                            classes=3,
                            in_channels=3)
 
     def _init_loss_fn(self):
-        # dist_mat = np.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.5], [1.0, 0.5, 0.0]], dtype=np.float32)
-        return [#monai.losses.DiceLoss(sigmoid=True),
-                monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True, batch=True, squared_pred=True,
-to_onehot_y=False, lambda_dice=0.2),
-#                 # monai.losses.GeneralizedWassersteinDiceLoss(dist_mat),
-#                 # monai.losses.FocalLoss(gamma=2)
-        ]
+        return monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True, batch=True, squared_pred=True,
+to_onehot_y=False, lambda_dice=0.2)
 
-        # return [smp.losses.TverskyLoss(mode="multilabel",
+        # return smp.losses.TverskyLoss(mode="multilabel",
         #                                classes=None,
         #                                log_loss=True,
         #                                from_logits=True,
@@ -74,7 +71,7 @@ to_onehot_y=False, lambda_dice=0.2),
         #                                eps=1e-07,
         #                                alpha=0.5,
         #                                beta=0.5,
-        #                                gamma=1.0)]
+        #                                gamma=1.0)
 
     def _init_metrics(self):
         val_metrics = MetricCollection({"val_dice": DiceMetric(classes = self.classes)}, prefix='val/Dice.')
@@ -105,7 +102,7 @@ to_onehot_y=False, lambda_dice=0.2),
         return self.model(images)
 
     def training_step(self, batch, batch_idx):
-        return self.shared_step(batch, "train")
+        return self.shared_step(batch, "train", batch_idx)
 
     def validation_step(self, batch, batch_idx):
         self.shared_step(batch, "val")
@@ -113,11 +110,16 @@ to_onehot_y=False, lambda_dice=0.2),
     def test_step(self, batch, batch_idx):
         self.shared_step(batch, "test")
 
-    def shared_step(self, batch, stage, log=True):
+    def shared_step(self, batch, stage, batch_idx=None, log=True):
         images, masks = batch["image"], batch["masks"]
-        y_pred = self(images)
+        # for i in range(images.size(0)):
+        #     img = np.array(images[i].detach().cpu().moveaxis(0,-1)*0.224 + 0.456)*255
+        #     mask = np.array(masks[i].detach().cpu().moveaxis(0,-1))*255
+        #     Image.fromarray(np.hstack((img, mask)).astype(np.uint8)).save(f"{str(batch_idx)}_{str(i)}.png")
 
-        loss = sum([func(y_pred, masks) for func in self.loss_fn])
+        y_pred = self.model(images)
+
+        loss = self.loss_fn(y_pred, masks)
 
         if stage != "train":
             self.metrics[f"{stage}_metrics"].update(y_pred, masks)

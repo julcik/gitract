@@ -3,13 +3,15 @@ import pytorch_lightning as pl
 from typing import Optional, Callable
 import pandas as pd
 import monai
-from monai.data import CSVDataset
+from monai.data import CSVDataset, CacheNTransDataset
 from monai.data import DataLoader
+from monai.utils import set_determinism
 import torch
 from torchmetrics import MetricCollection
 from gitract.model.metrics import DiceMetric
 
 SPATIAL_SIZE=(384,384)
+
 
 class LitDataModule(pl.LightningDataModule):
     def __init__(
@@ -20,7 +22,7 @@ class LitDataModule(pl.LightningDataModule):
         num_workers: int,
     ):
         super().__init__()
-
+        set_determinism(seed=42)
         self.save_hyperparameters()
         self.data_path = data_path
 
@@ -32,43 +34,43 @@ class LitDataModule(pl.LightningDataModule):
 
     def _init_transforms(self):
         spatial_size = SPATIAL_SIZE
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
+        mean = np.array([0.456, 0.456, 0.456])
+        std = np.array([0.224, 0.224, 0.224])
 
 
         transforms = [
             monai.transforms.LoadImaged(keys=["image", "masks"]),
             # monai.transforms.AddChanneld(keys=["image", "masks"]),
             monai.transforms.AsChannelFirstd(keys=["image", "masks"], channel_dim=2),
-            monai.transforms.ScaleIntensityd(keys="image"),
+            monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv= None, factor=1/255.0 - 1),
             monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True),
+            monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
             # monai.transforms.RandCropByPosNegLabeld(
             #     keys=["image", "masks"], label_key="masks", spatial_size=[96, 96], pos=1, neg=1, num_samples=4
             # ),
 
-            monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.2),
-            monai.transforms.RandGaussianNoised(keys=["image"], prob=0.2),
-            monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.2),
-            monai.transforms.RandFlipd(keys=["image", "masks"], prob=0.5),
-            monai.transforms.RandRotated(keys=["image", "masks"], range_x=180, range_y=180, prob=0.2),
-            monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.3),
-            monai.transforms.RandAffined(keys=["image", "masks"], prob=0.2),
-            monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.2),
+            # monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.2),
+            # monai.transforms.RandGaussianNoised(keys=["image"], prob=0.2),
+            # monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.2),
+            # monai.transforms.RandFlipd(keys=["image", "masks"], prob=0.5),
+            #  monai.transforms.RandRotated(keys=["image", "masks"], range_x=10, range_y=10, prob=0.2),
+            # monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.3),
+            # monai.transforms.RandAffined(keys=["image", "masks"], prob=0.2),
+            # monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.2),
             # monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
-            monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
-            monai.transforms.EnsureTyped(keys=["image", "masks"]),
+
+            monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
         test_transforms = [
             monai.transforms.LoadImaged(keys=["image", "masks"]),
             # monai.transforms.AddChanneld(keys=["image", "masks"]),
             monai.transforms.AsChannelFirstd(keys=["image", "masks"], channel_dim=2),
-            monai.transforms.ScaleIntensityd(keys=["image", "masks"]),
+            monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1),
             monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True),
             # monai.transforms.ResizeWithPadOrCrop(keys=["image_3d"], spatial_size=spatial_size),
             monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
-            monai.transforms.EnsureTyped(keys=["image", "masks"]),
-            monai.transforms.EnsureTyped(keys=["image", "masks"]),
+            monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
         train_transforms = monai.transforms.Compose(transforms)

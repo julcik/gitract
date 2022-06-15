@@ -36,6 +36,9 @@ def parse_train(data_path):
     df_train["size_x"] = np.repeat(size_x, 3)
     df_train["size_y"] = np.repeat(size_y, 3)
     df_train["slice"] = np.repeat([int(os.path.basename(_)[:-4].split("_")[-5]) for _ in all_image_files], 3)
+    df_train['segmentation'] = df_train.segmentation.fillna('')
+    df_train['rle_len'] = df_train.segmentation.map(len)
+    df_train['empty'] = (df_train.rle_len == 0)
     return df_train
 
 def parse_test(data_path):
@@ -71,14 +74,17 @@ def rle_encode(img):
     return ' '.join(str(x) for x in runs)
 
 
-def make_2_5_d(df_train, out, stride = 2):
+def make_2_5_d(df_train, out, stride = 2, add_background=False):
     for day, group in tqdm(df_train.groupby("days")):
         # patient = group.patient.iloc[0]
         imgs = []
         msks = []
         # file_names = []
         for file_name in group.image_files.unique():
-            img = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
+            img = cv2.imread(file_name, cv2.IMREAD_UNCHANGED).astype('float32')
+            img = cv2.normalize(img, None, alpha=0, beta=255,
+                                  norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            img = img.astype(np.uint8)
             segms = group.loc[group.image_files == file_name]
             masks = {}
             for segm, label in zip(segms.segmentation, segms["class"]):
@@ -88,13 +94,16 @@ def make_2_5_d(df_train, out, stride = 2):
                 else:
                     masks[label] = np.zeros(img.shape[:2], dtype = np.uint8)
             masks = np.stack([masks[k] for k in sorted(masks)], -1)
+            if add_background:
+                bg_mask = 1 - masks.max(-1, keepdims=True)
+                masks = np.concatenate([bg_mask, masks], axis=-1)
             imgs.append(img)
             msks.append(masks)
 
         imgs = np.stack(imgs, 0)
         msks = np.stack(msks, 0)
         for i in range(msks.shape[0]):
-            img = imgs[[max(0, i - stride), i, min(imgs.shape[0] - 1, i + stride)]].transpose(1,2,0) # 2.5d data
+            img = imgs[[max(0, i - stride), i, min(imgs.shape[0] - 1, i + stride)]].transpose(1, 2, 0)  # 2.5d data
             msk = msks[i]
             new_file_name = f"{day}_{i}.png"
             cv2.imwrite(str(out / "images" / new_file_name), img)

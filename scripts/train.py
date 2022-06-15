@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import  Optional
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor
+
 from gitract.data.data_module import LitDataModule
 from gitract.model.runner import LitModule
 import click
@@ -84,6 +86,7 @@ def train(
 
     if device == "cpu":
         gpus = 0
+
     trainer = pl.Trainer(
         # fast_dev_run=fast_dev_run,
         accelerator=device,
@@ -93,6 +96,9 @@ def train(
                 TensorBoardLogger(out_dir, name="tb_logs")],
         max_epochs=max_epochs,
         precision=precision,
+        limit_train_batches=200 if device == "cpu" else None,
+        limit_val_batches=20 if device == "cpu" else None,
+        callbacks=[LearningRateMonitor(logging_interval='step')]
     )
 
     trainer.fit(module, datamodule=data_module)
