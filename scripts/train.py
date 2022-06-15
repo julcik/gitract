@@ -44,6 +44,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--learning_rate', default=LEARNING_RATE)
 @click.option('--max_epochs', default=MAX_EPOCHS)
 @click.option('--device', default=DEVICE)
+@click.option('--model', default="smpUnet")
 def train(
         out_dir,
         data_path: str,
@@ -60,6 +61,7 @@ def train(
         precision: int = PRECISION,
         debug: bool = DEBUG,
         random_seed: int = RANDOM_SEED,
+        model: str = "smpUnet"
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)

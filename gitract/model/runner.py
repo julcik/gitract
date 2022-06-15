@@ -3,7 +3,7 @@ from typing import Optional, Callable
 import pandas as pd
 import monai
 import torch
-from torchmetrics import MetricCollection
+from torchmetrics import MetricCollection, ClasswiseWrapper
 from gitract.model.metrics import DiceMetric
 import segmentation_models_pytorch as smp
 import numpy as np
@@ -38,10 +38,10 @@ class LitModule(pl.LightningModule):
                 spatial_dims=2,
                 in_channels=3,
                 out_channels=3,
-                # channels=(16, 32, 64, 128, 256),
-                channels=(4, 8, 16, 32, 64),
+                channels=(16, 32, 64, 128, 256),
+                # channels=(4, 8, 16, 32, 64),
                 strides=(2, 2, 2, 2),
-                # num_res_units=2,
+                num_res_units=2,
             )
         elif self.hparams.model == "smpFPN":
             return smp.FPN('efficientnet-b2',
@@ -58,23 +58,23 @@ class LitModule(pl.LightningModule):
 
     def _init_loss_fn(self):
         # dist_mat = np.array([[0.0, 1.0, 1.0], [1.0, 0.0, 0.5], [1.0, 0.5, 0.0]], dtype=np.float32)
-#         return [#monai.losses.DiceLoss(sigmoid=True),
-#                 monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True, batch=True, squared_pred=True,
-# to_onehot_y=False, lambda_dice=0.2),
+        return [#monai.losses.DiceLoss(sigmoid=True),
+                monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True, batch=True, squared_pred=True,
+to_onehot_y=False, lambda_dice=0.2),
 #                 # monai.losses.GeneralizedWassersteinDiceLoss(dist_mat),
 #                 # monai.losses.FocalLoss(gamma=2)
-#         ]
+        ]
 
-        return [smp.losses.TverskyLoss(mode="multilabel",
-                                       classes=None,
-                                       log_loss=True,
-                                       from_logits=True,
-                                       smooth=0.0,
-                                       ignore_index=None,
-                                       eps=1e-07,
-                                       alpha=0.5,
-                                       beta=0.5,
-                                       gamma=1.0)]
+        # return [smp.losses.TverskyLoss(mode="multilabel",
+        #                                classes=None,
+        #                                log_loss=True,
+        #                                from_logits=True,
+        #                                smooth=0.0,
+        #                                ignore_index=None,
+        #                                eps=1e-07,
+        #                                alpha=0.5,
+        #                                beta=0.5,
+        #                                gamma=1.0)]
 
     def _init_metrics(self):
         val_metrics = MetricCollection({"val_dice": DiceMetric(classes = self.classes)}, prefix='val/Dice.')
@@ -88,17 +88,18 @@ class LitModule(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(params=self.parameters(), lr=self.hparams.learning_rate,
-                                     weight_decay=self.hparams.weight_decay)
+        optimizer = torch.optim.Adam(params=self.model.parameters(),
+                                     lr=self.hparams.learning_rate )#,
+                                     # weight_decay=self.hparams.weight_decay)
 
-        if self.hparams.scheduler is None:
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                    optimizer, T_max=self.hparams.T_max, eta_min=self.hparams.min_lr
-            )
-
-            return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
-        else:
-            return {"optimizer": optimizer}
+        # if self.hparams.scheduler is None:
+        #     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        #             optimizer, T_max=self.hparams.T_max, eta_min=self.hparams.min_lr
+        #     )
+        #
+        #     return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
+        # else:
+        return {"optimizer": optimizer}
 
     def forward(self, images):
         return self.model(images)

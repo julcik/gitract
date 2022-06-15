@@ -42,16 +42,21 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.AsChannelFirstd(keys=["image", "masks"], channel_dim=2),
             monai.transforms.ScaleIntensityd(keys="image"),
             monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True),
-            # RandAdjustContrastd(keys=["image"], prob=0.3),
-            # RandGaussianNoised(keys=["image"], prob=0.5),
-            # RandRotate90d(keys=["image", "label"], prob=0.5),
-            # RandFlipd(keys=["image", "label"], prob=0.5),
-            # RandRotated(keys=["image", "label"], range_x=180, range_y=180, prob=0.5),
-            # RandZoomd(keys=["image", "label"], prob=0.2, min_zoom=1, max_zoom=2),
-            # RandAffined(keys=["image", "label"], prob=0.5),
-            # Rand2DElasticd(keys=["image", "label"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.5),
+            # monai.transforms.RandCropByPosNegLabeld(
+            #     keys=["image", "masks"], label_key="masks", spatial_size=[96, 96], pos=1, neg=1, num_samples=4
+            # ),
+
+            monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.2),
+            monai.transforms.RandGaussianNoised(keys=["image"], prob=0.2),
+            monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.2),
+            monai.transforms.RandFlipd(keys=["image", "masks"], prob=0.5),
+            monai.transforms.RandRotated(keys=["image", "masks"], range_x=180, range_y=180, prob=0.2),
+            monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.3),
+            monai.transforms.RandAffined(keys=["image", "masks"], prob=0.2),
+            monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.2),
             # monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
             monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
+            monai.transforms.EnsureTyped(keys=["image", "masks"]),
         ]
 
         test_transforms = [
@@ -62,6 +67,8 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True),
             # monai.transforms.ResizeWithPadOrCrop(keys=["image_3d"], spatial_size=spatial_size),
             monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
+            monai.transforms.EnsureTyped(keys=["image", "masks"]),
+            monai.transforms.EnsureTyped(keys=["image", "masks"]),
         ]
 
         train_transforms = monai.transforms.Compose(transforms)
