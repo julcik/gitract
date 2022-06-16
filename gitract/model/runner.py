@@ -4,6 +4,8 @@ import pandas as pd
 import monai
 import torch
 from torchmetrics import MetricCollection, ClasswiseWrapper
+from torchvision.utils import make_grid
+
 from gitract.model.metrics import DiceMetric
 import segmentation_models_pytorch as smp
 import numpy as np
@@ -105,7 +107,30 @@ to_onehot_y=False, lambda_dice=0.2)
         return self.shared_step(batch, "train", batch_idx)
 
     def validation_step(self, batch, batch_idx):
-        self.shared_step(batch, "val")
+        images, masks = batch["image"], batch["masks"]
+        # for i in range(images.size(0)):
+        #     img = np.array(images[i].detach().cpu().moveaxis(0,-1)*0.224 + 0.456)*255
+        #     mask = np.array(masks[i].detach().cpu().moveaxis(0,-1))*255
+        #     Image.fromarray(np.hstack((img, mask)).astype(np.uint8)).save(f"{str(batch_idx)}_{str(i)}.png")
+        y_pred = self.model(images)
+        if batch_idx < 16:
+            self.loggers[1].experiment.add_image("val/prediction", torch.Tensor.cpu(
+                make_grid([images[0],
+                           masks[0],
+                           y_pred[0,0].unsqueeze(0).repeat([3,1,1]),
+                           y_pred[0,1].unsqueeze(0).repeat([3,1,1]),
+                           y_pred[0,2].unsqueeze(0).repeat([3,1,1])],
+                nrow = 1)
+            ), self.current_epoch, dataformats="CHW")
+
+        loss = self.loss_fn(y_pred, masks)
+
+        self.metrics[f"val_metrics"].update(y_pred, masks)
+
+        batch_size = images.shape[0]
+        self._log(loss, batch_size, None, 'val')
+
+        return loss
 
     def test_step(self, batch, batch_idx):
         self.shared_step(batch, "test")

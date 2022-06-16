@@ -82,6 +82,7 @@ def train(
         T_max=int(30_000 / batch_size * max_epochs) + 50,
         T_0=25,
         min_lr=min_lr,
+        model=model
     )
 
     if device == "cpu":
@@ -96,7 +97,7 @@ def train(
                 TensorBoardLogger(out_dir, name="tb_logs")],
         max_epochs=max_epochs,
         precision=precision,
-        limit_train_batches=200 if device == "cpu" else None,
+        limit_train_batches=20 if device == "cpu" else None,
         limit_val_batches=20 if device == "cpu" else None,
         callbacks=[LearningRateMonitor(logging_interval='step')]
     )
