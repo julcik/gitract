@@ -1,6 +1,6 @@
 import numpy as np
 import pytorch_lightning as pl
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
 import pandas as pd
 import monai
 from monai.data import CSVDataset, CacheNTransDataset
@@ -10,14 +10,12 @@ import torch
 from torchmetrics import MetricCollection
 from gitract.model.metrics import DiceMetric
 
-SPATIAL_SIZE=(384,384)
-
-
 class LitDataModule(pl.LightningDataModule):
     def __init__(
         self,
         data_path: str,
         holdout_path: str,
+        spatial_size: Tuple[int,int],
         batch_size: int,
         num_workers: int,
     ):
@@ -33,32 +31,29 @@ class LitDataModule(pl.LightningDataModule):
 
 
     def _init_transforms(self):
-        spatial_size = SPATIAL_SIZE
+        spatial_size = self.hparams.spatial_size
+
         mean = np.array([0.456, 0.456, 0.456])
         std = np.array([0.224, 0.224, 0.224])
 
 
         transforms = [
             monai.transforms.LoadImaged(keys=["image", "masks"]),
-            # monai.transforms.AddChanneld(keys=["image", "masks"]),
             monai.transforms.AsChannelFirstd(keys=["image", "masks"], channel_dim=2),
             monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv= None, factor=1/255.0 - 1),
             monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True),
-            monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
-            # monai.transforms.RandCropByPosNegLabeld(
-            #     keys=["image", "masks"], label_key="masks", spatial_size=[96, 96], pos=1, neg=1, num_samples=4
-            # ),
-
-            # monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.2),
-            # monai.transforms.RandGaussianNoised(keys=["image"], prob=0.2),
-            # monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.2),
             # monai.transforms.RandFlipd(keys=["image", "masks"], prob=0.5),
-            #  monai.transforms.RandRotated(keys=["image", "masks"], range_x=10, range_y=10, prob=0.2),
-            # monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.3),
-            # monai.transforms.RandAffined(keys=["image", "masks"], prob=0.2),
-            # monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.2),
-            # monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
+            monai.transforms.OneOf(transforms=[
+                monai.transforms.RandAdjustContrastd(keys=["image"], prob=1),
+                monai.transforms.RandGaussianNoised(keys=["image"], prob=1),
+                monai.transforms.RandRotate90d(keys=["image", "masks"], prob=1),
+                monai.transforms.RandRotated(keys=["image", "masks"], range_x=10, range_y=10, prob=1),
+                monai.transforms.RandZoomd(keys=["image", "masks"], prob=1, min_zoom=0.8, max_zoom=1.3),
+                monai.transforms.RandAffined(keys=["image", "masks"], prob=1),
+                # monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.2),
+            ]),
 
+            monai.transforms.Resized(keys=["image", "masks"], spatial_size=spatial_size, mode="nearest"),
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
@@ -90,6 +85,7 @@ class LitDataModule(pl.LightningDataModule):
             dataset,
             batch_size=self.hparams.batch_size,
             shuffle=train,
+            drop_last=train,
             num_workers=self.hparams.num_workers,
             pin_memory=True,
         )

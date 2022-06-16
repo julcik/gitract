@@ -74,13 +74,14 @@ def rle_encode(img):
     return ' '.join(str(x) for x in runs)
 
 
-def make_2_5_d(df_train, out, stride = 2, add_background=False):
+def make_2_5_d(df_train, out, stride = 2, add_background=True, downsample_empty=0.3):
     for day, group in tqdm(df_train.groupby("days")):
         # patient = group.patient.iloc[0]
         imgs = []
         msks = []
         # file_names = []
         for file_name in group.image_files.unique():
+            # print(file_name)
             img = cv2.imread(file_name, cv2.IMREAD_UNCHANGED).astype('float32')
             img = cv2.normalize(img, None, alpha=0, beta=255,
                                   norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
@@ -102,10 +103,14 @@ def make_2_5_d(df_train, out, stride = 2, add_background=False):
 
         imgs = np.stack(imgs, 0)
         msks = np.stack(msks, 0)
+        slices = group.slice.unique().tolist()
         for i in range(msks.shape[0]):
             img = imgs[[max(0, i - stride), i, min(imgs.shape[0] - 1, i + stride)]].transpose(1, 2, 0)  # 2.5d data
             msk = msks[i]
-            new_file_name = f"{day}_{i}.png"
+            if np.sum(msk[:,:,-3:]) == 0: #empty
+                if np.random.rand() > downsample_empty:
+                    continue
+            new_file_name = f"{day}_{slices[i]}.png"
             cv2.imwrite(str(out / "images" / new_file_name), img)
             cv2.imwrite(str(out / "labels" / new_file_name), msk)
 
@@ -113,6 +118,7 @@ def split(out):
     # all_image_files = pd.DataFrame([f.relative_to(out) for f in out.glob("images/*.png")], columns=["image"])
     all_image_files = pd.DataFrame([f.absolute() for f in out.glob("images/*.png")], columns=["image"])
     all_image_files["masks"] = [str(f).replace("images", "labels") for f in all_image_files["image"]]
+    all_image_files["key"] = [f.name for f in all_image_files["image"]]
     all_image_files["patients"] = [f.name.split("_")[0] for f in all_image_files["image"]]
     # patients = [f.name.split("_")[0] for f in all_image_files]
 
@@ -147,4 +153,5 @@ def main():
     split(out_dir)
 
 if __name__ == '__main__':
+    np.random.seed(42)
     main()

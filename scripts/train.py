@@ -25,8 +25,9 @@ NUM_WORKERS = 6
 OPTIMIZER = "Adam"
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 0.05
-SCHEDULER = None
+SCHEDULER = "CosineAnnealingLR"
 MIN_LR = 1e-8
+SPATIAL_SIZE = 384
 
 GPUS = -1
 MAX_EPOCHS = 30
@@ -47,6 +48,8 @@ DEBUG = False # Debug complete pipeline
 @click.option('--max_epochs', default=MAX_EPOCHS)
 @click.option('--device', default=DEVICE)
 @click.option('--model', default="smpUnet")
+@click.option('--spatial_size', default=SPATIAL_SIZE)
+@click.option('--background', default=True)
 def train(
         out_dir,
         data_path: str,
@@ -63,7 +66,9 @@ def train(
         precision: int = PRECISION,
         debug: bool = DEBUG,
         random_seed: int = RANDOM_SEED,
-        model: str = "smpUnet"
+        model: str = "smpUnet",
+        spatial_size: int = SPATIAL_SIZE,
+        background: bool = True
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -73,6 +78,7 @@ def train(
         holdout_path=holdout_path,
         batch_size=batch_size,
         num_workers=num_workers,
+        spatial_size=(spatial_size,spatial_size),
     )
 
     module = LitModule(
@@ -82,14 +88,14 @@ def train(
         T_max=int(30_000 / batch_size * max_epochs) + 50,
         T_0=25,
         min_lr=min_lr,
-        model=model
+        model=model,
+        background=background
     )
 
     if device == "cpu":
         gpus = 0
 
     trainer = pl.Trainer(
-        # fast_dev_run=fast_dev_run,
         accelerator=device,
         gpus=gpus,
         log_every_n_steps=10,
@@ -103,9 +109,6 @@ def train(
     )
 
     trainer.fit(module, datamodule=data_module)
-
-    # if not fast_dev_run:
-    #     trainer.test(module, datamodule=data_module)
 
     return trainer
 
