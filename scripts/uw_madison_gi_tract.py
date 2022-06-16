@@ -135,7 +135,7 @@ def split(out, downsample_empty=1.0):
     for fold, (train_idx, valid_idx) in enumerate(split):
         train = all_image_files.iloc[train_idx]
         if downsample_empty<1:
-            train = pd.concat((train[~train.is_empty],train[train.is_empty].sample(downsample_empty)), axis=0)
+            train = pd.concat((train[~train.is_empty],train[train.is_empty].sample(frac=downsample_empty, random_state=42)), axis=0)
         train.to_csv(out / f"splits/fold_{fold}.csv", index=False)
 
         all_image_files.iloc[valid_idx].to_csv(out / f"splits/holdout_{fold}.csv", index=False)
