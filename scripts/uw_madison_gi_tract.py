@@ -1,6 +1,6 @@
-import argparse
 import os
 import glob
+import click
 
 import numpy as np
 import pandas as pd
@@ -10,13 +10,6 @@ import cv2
 from PIL import Image
 from tqdm.auto import tqdm
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Convert to 2.5D')
-    parser.add_argument('--data-path', help='data path')
-    parser.add_argument('-o', '--out-dir', help='output path')
-    args = parser.parse_args()
-    return args
 
 def parse_train(data_path):
     df_train = pd.read_csv(data_path / "train.csv")
@@ -74,7 +67,7 @@ def rle_encode(img):
     return ' '.join(str(x) for x in runs)
 
 
-def make_2_5_d(df_train, out, stride = 2, add_background=True, downsample_empty=0.3):
+def make_2_5_d(df_train, out, stride = 2, add_background=False, downsample_empty=0.3):
     for day, group in tqdm(df_train.groupby("days")):
         # patient = group.patient.iloc[0]
         imgs = []
@@ -98,6 +91,7 @@ def make_2_5_d(df_train, out, stride = 2, add_background=True, downsample_empty=
             if add_background:
                 bg_mask = 1 - masks.max(-1, keepdims=True)
                 masks = np.concatenate([bg_mask, masks], axis=-1)
+
             imgs.append(img)
             msks.append(masks)
 
@@ -111,6 +105,14 @@ def make_2_5_d(df_train, out, stride = 2, add_background=True, downsample_empty=
                 if np.random.rand() > downsample_empty:
                     continue
             new_file_name = f"{day}_{slices[i]}.png"
+
+            # RGBA <-> BGRA problem, mixed classes
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            if add_background:
+                msk = cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
+            else:
+                msk = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
             cv2.imwrite(str(out / "images" / new_file_name), img)
             cv2.imwrite(str(out / "labels" / new_file_name), msk)
 
@@ -138,18 +140,24 @@ def split(out):
         #         f.write(all_image_files[idx].stem + "\n")
 
 
-def main():
-    args = parse_args()
-    data_path = Path(args.data_path)
-    out_dir = Path(args.out_dir) if args.out_dir else data_path
+@click.command()
+@click.option('-d', '--data_path')
+@click.option('-o', '--out_dir')
+@click.option('--add_background', default=False)
+@click.option('--downsample_empty', default=1.0)
+def main(data_path:str,
+         out_dir:str,
+         add_background: bool,
+         downsample_empty: float):
+    data_path = Path(data_path)
+    out_dir = Path(out_dir) if out_dir else data_path
     out_dir.mkdir(exist_ok=True)
     (out_dir / "images").mkdir(exist_ok=True)
     (out_dir / "labels").mkdir(exist_ok=True)
     (out_dir / "splits").mkdir(exist_ok=True)
 
     df_train = parse_train(data_path)
-    print(df_train)
-    make_2_5_d(df_train, out_dir)
+    make_2_5_d(df_train, out_dir, add_background=add_background, downsample_empty=downsample_empty)
     split(out_dir)
 
 if __name__ == '__main__':

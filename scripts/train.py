@@ -24,7 +24,7 @@ BATCH_SIZE = 32
 NUM_WORKERS = 6
 OPTIMIZER = "Adam"
 LEARNING_RATE = 1e-3
-WEIGHT_DECAY = 0.05
+WEIGHT_DECAY = 0
 SCHEDULER = "CosineAnnealingLR"
 MIN_LR = 1e-8
 SPATIAL_SIZE = 384
@@ -49,7 +49,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--device', default=DEVICE)
 @click.option('--model', default="smpUnet")
 @click.option('--spatial_size', default=SPATIAL_SIZE)
-@click.option('--background', default=True)
+@click.option('--background', default=False)
 def train(
         out_dir,
         data_path: str,
