@@ -101,9 +101,7 @@ def make_2_5_d(df_train, out, stride = 2, add_background=False, downsample_empty
         for i in range(msks.shape[0]):
             img = imgs[[max(0, i - stride), i, min(imgs.shape[0] - 1, i + stride)]].transpose(1, 2, 0)  # 2.5d data
             msk = msks[i]
-            if np.sum(msk[:,:,-3:]) == 0: #empty
-                if np.random.rand() > downsample_empty:
-                    continue
+
             new_file_name = f"{day}_{slices[i]}.png"
 
             # RGBA <-> BGRA problem, mixed classes
@@ -116,21 +114,31 @@ def make_2_5_d(df_train, out, stride = 2, add_background=False, downsample_empty
             cv2.imwrite(str(out / "images" / new_file_name), img)
             cv2.imwrite(str(out / "labels" / new_file_name), msk)
 
-def split(out):
+
+def is_empty(mask_file):
+    msk = cv2.imread(mask_file)
+    return np.sum(msk[:, :, -3:]) == 0
+
+def split(out, downsample_empty=1.0):
     # all_image_files = pd.DataFrame([f.relative_to(out) for f in out.glob("images/*.png")], columns=["image"])
     all_image_files = pd.DataFrame([f.absolute() for f in out.glob("images/*.png")], columns=["image"])
     all_image_files["masks"] = [str(f).replace("images", "labels") for f in all_image_files["image"]]
     all_image_files["key"] = [f.name for f in all_image_files["image"]]
     all_image_files["patients"] = [f.name.split("_")[0] for f in all_image_files["image"]]
     # patients = [f.name.split("_")[0] for f in all_image_files]
+    all_image_files["is_empty"] = all_image_files["masks"].apply(is_empty)
 
     from sklearn.model_selection import GroupKFold
 
     split = list(GroupKFold(5).split(all_image_files["patients"], groups = all_image_files["patients"]))
 
     for fold, (train_idx, valid_idx) in enumerate(split):
-        all_image_files.iloc[train_idx].to_csv(out / f"splits/fold_{fold}.csv", index=False)
-        all_image_files.iloc[train_idx].to_csv(out / f"splits/holdout_{fold}.csv", index=False)
+        train = all_image_files.iloc[train_idx]
+        if downsample_empty<1:
+            train = pd.concat((train[~train.is_empty],train[train.is_empty].sample(downsample_empty)), axis=0)
+        train.to_csv(out / f"splits/fold_{fold}.csv", index=False)
+
+        all_image_files.iloc[valid_idx].to_csv(out / f"splits/holdout_{fold}.csv", index=False)
 
         # with open(out / f"splits/fold_{fold}.txt", "w") as f:
         #     for idx in train_idx:
@@ -157,8 +165,8 @@ def main(data_path:str,
     (out_dir / "splits").mkdir(exist_ok=True)
 
     df_train = parse_train(data_path)
-    make_2_5_d(df_train, out_dir, add_background=add_background, downsample_empty=downsample_empty)
-    split(out_dir)
+    make_2_5_d(df_train, out_dir, add_background=add_background)
+    split(out_dir, downsample_empty=downsample_empty)
 
 if __name__ == '__main__':
     np.random.seed(42)
