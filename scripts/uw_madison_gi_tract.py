@@ -109,9 +109,9 @@ def make_2_5_d(df_train, out, stride = 2, add_background=False, downsample_empty
             # RGBA <-> BGRA problem, mixed classes
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             if add_background:
-                msk = cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA)
+                msk = cv2.cvtColor(msk, cv2.COLOR_RGBA2BGRA)
             else:
-                msk = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                msk = cv2.cvtColor(msk, cv2.COLOR_RGB2BGR)
 
             cv2.imwrite(str(out / "images" / new_file_name), img)
             cv2.imwrite(str(out / "labels" / new_file_name), msk)
