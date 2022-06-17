@@ -67,7 +67,7 @@ class LitModule(pl.LightningModule):
                            classes=self.n_classes,
                            in_channels=3)
         elif self.hparams.model == "smpUnet":
-            return smp.Unet('efficientnet-b0',
+            return smp.Unet('efficientnet-b2',
                             encoder_weights = "imagenet",
                             classes=self.n_classes,
                             in_channels=3)
@@ -79,12 +79,14 @@ class LitModule(pl.LightningModule):
     def _init_loss_fn(self):
         return monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True, batch=True, squared_pred=True,
 to_onehot_y=False, lambda_dice=0.2)
+        # return monai.losses.DiceCELoss(sigmoid=True,
+        #                        include_background=True, batch=False, to_onehot_y=False)
 
         # return smp.losses.TverskyLoss(mode="multilabel",
         #                                classes=None,
         #                                log_loss=True,
         #                                from_logits=True,
-        #                                smooth=0.0,
+        #                                smooth=1.0,
         #                                ignore_index=None,
         #                                eps=1e-07,
         #                                alpha=0.5,
@@ -95,8 +97,6 @@ to_onehot_y=False, lambda_dice=0.2)
         val_metrics = MetricCollection(
             {
                 "val_dice_classwise": DiceMetric(classes = self.classes),
-                # "val_dice_classwise": monai.metrics.DiceMetric(include_background=True, reduction=MetricReduction.MEAN_BATCH, get_not_nans=False,
-                #                         )
              }, prefix='val/')
         test_metrics = MetricCollection({"test_dice": DiceMetric(classes = self.classes)})
 
@@ -108,7 +108,7 @@ to_onehot_y=False, lambda_dice=0.2)
         )
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(params=self.model.parameters(),
+        optimizer = torch.optim.AdamW(params=self.model.parameters(),
                                      lr=self.hparams.learning_rate,
                                      weight_decay=self.hparams.weight_decay)
 

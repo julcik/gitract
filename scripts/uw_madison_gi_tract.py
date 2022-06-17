@@ -67,7 +67,7 @@ def rle_encode(img):
     return ' '.join(str(x) for x in runs)
 
 
-def make_2_5_d(df_train, out, stride = 2, add_background=False, downsample_empty=0.3):
+def make_2_5_d(df_train, out, stride = 2, add_background=False):
     for day, group in tqdm(df_train.groupby("days")):
         # patient = group.patient.iloc[0]
         imgs = []

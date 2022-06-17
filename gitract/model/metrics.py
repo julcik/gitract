@@ -28,7 +28,6 @@ class DiceMetric(Metric):
 
 
     def compute(self):
-        # metric = torch.mean(torch.nan_to_num(torch.stack(self.dice)), dim=0)
         self.metric.reduction = MetricReduction.MEAN_BATCH
         metric = self.metric.aggregate()
         classwise = {f"{self.prefix}.{self.classes[clz]}":metric[clz] for clz in range(len(self.classes))}
