@@ -66,6 +66,8 @@ class LitModule(pl.LightningModule):
             return smp.Unet('efficientnet-b2',
                             encoder_weights="imagenet",
                             classes=self.n_classes,
+                            decoder_attention_type='scse',
+                            decoder_channels = [256, 128, 64, 32, 16],
                             in_channels=3)
         elif self.hparams.model == "smpUnetPP":
             return smp.UnetPlusPlus('efficientnet-b2',
@@ -121,18 +123,33 @@ class LitModule(pl.LightningModule):
                 img_size=320,
                 feature_size=32,
                 hidden_size=768,
-                mlp_dim=3072,
-                num_heads=12,
+                mlp_dim=1024,
+                num_heads=6, #12
                 pos_embed='conv',
                 norm_name='instance',
                 conv_block=True,
                 res_block=True,
                 dropout_rate=0.0,)
+        elif self.hparams.model == "SwinUNETR":
+            return monai.networks.nets.SwinUNETR(
+                img_size=(320,320),
+                in_channels=3,
+                out_channels=self.n_classes,
+                depths=(2, 2, 2, 2),
+                num_heads=(3, 6, 12, 24),
+                feature_size=24,
+                norm_name='instance',
+                drop_rate=0.0,
+                attn_drop_rate=0.0,
+                dropout_path_rate=0.0,
+                normalize=True,
+                use_checkpoint=True,
+                spatial_dims=2)
 
     def _init_loss_fn(self):
         return monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True,
                                           batch=False, squared_pred=True,
-                                          to_onehot_y=False, lambda_dice=0.2)
+                                          to_onehot_y=False)
         # return monai.losses.DiceCELoss(sigmoid=True,
         #                        include_background=True, batch=False, to_onehot_y=False)
 
