@@ -51,7 +51,7 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.1),
 
             monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size[0], mode="nearest"),
-            monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
+            monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=spatial_size),
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
@@ -64,7 +64,7 @@ class LitDataModule(pl.LightningDataModule):
             # monai.transforms.ResizeWithPadOrCrop(keys=["image_3d"], spatial_size=spatial_size),
             monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size[0],
                                      mode="nearest"),
-            monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
+            monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=spatial_size),
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
