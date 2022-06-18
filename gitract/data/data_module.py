@@ -50,7 +50,7 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.1, min_zoom=0.8, max_zoom=1.3),
             monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.1),
 
-            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size, mode="nearest"),
+            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size[0], mode="nearest"),
             monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
@@ -62,7 +62,7 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1),
             monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True),
             # monai.transforms.ResizeWithPadOrCrop(keys=["image_3d"], spatial_size=spatial_size),
-            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size,
+            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size[0],
                                      mode="nearest"),
             monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size),
             monai.transforms.ToTensord(keys=["image", "masks"]),
