@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import  Optional
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from gitract.data.data_module import LitDataModule
 from gitract.model.runner import LitModule
@@ -103,9 +103,16 @@ def train(
                 TensorBoardLogger(out_dir, name="tb_logs")],
         max_epochs=max_epochs,
         precision=precision,
-        limit_train_batches=20 if device == "cpu" else None,
-        limit_val_batches=20 if device == "cpu" else None,
-        callbacks=[LearningRateMonitor(logging_interval='step')]
+        limit_train_batches=2 if device == "cpu" else None,
+        limit_val_batches=2 if device == "cpu" else None,
+        callbacks=[LearningRateMonitor(logging_interval='step'),
+                   ModelCheckpoint(
+                       dirpath = out_dir/'checkpoints',
+                       filename = '{epoch}-val_loss{val/loss:.2f}-val_mDice{val/mDice:.2f}',
+                       auto_insert_metric_name=False,
+                       save_top_k = -1
+        )
+    ]
     )
 
     trainer.fit(module, datamodule=data_module)
