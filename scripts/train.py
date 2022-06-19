@@ -45,6 +45,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--batch_size', default=BATCH_SIZE)
 @click.option('--num_workers', default=NUM_WORKERS)
 @click.option('--learning_rate', default=LEARNING_RATE)
+@click.option('--weight_decay', default=WEIGHT_DECAY)
 @click.option('--max_epochs', default=MAX_EPOCHS)
 @click.option('--device', default=DEVICE)
 @click.option('--model', default="smpUnet")
