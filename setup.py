@@ -3,6 +3,8 @@ import os.path as osp
 import shutil
 import sys
 import warnings
+
+import setuptools
 from setuptools import find_packages, setup
 
 
@@ -22,6 +24,7 @@ if __name__ == '__main__':
         name='gitract',
         version='0.0.1',
         description='Hello world',
+        packages=setuptools.find_packages(),
         install_requires=parse_requirements('requirements.txt'),
         ext_modules=[],
         zip_safe=False)
