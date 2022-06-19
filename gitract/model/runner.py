@@ -13,12 +13,12 @@ from gitract.model.metrics import DiceMetric
 class LitModule(pl.LightningModule):
     def __init__(
             self,
-            learning_rate: float,
-            weight_decay: float,
-            scheduler: Optional[str],
-            T_max: int,
-            T_0: int,
-            min_lr: int,
+            learning_rate: float = 1e-3,
+            weight_decay: float =0,
+            scheduler: Optional[str] = None,
+            T_max: int = 1000,
+            T_0: int = 0,
+            min_lr: int = 0,
             model: str = "unet",  # "smpUnet"
             background: bool = True,
     ):
@@ -32,11 +32,17 @@ class LitModule(pl.LightningModule):
         self.save_hyperparameters()
 
         self.model = self._init_model()
-        print(self.model)
+        # print(self.model)
 
         self.loss_fn = self._init_loss_fn()
 
         self.metrics = self._init_metrics()
+        self.post_processing = monai.transforms.Compose(
+            [
+                monai.transforms.Activations(sigmoid=True),
+                monai.transforms.AsDiscrete(threshold=0.5),
+            ]
+        )
 
     def _init_model(self):
         print(f"Init {self.hparams.model}")
@@ -203,6 +209,10 @@ class LitModule(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         self.shared_step(batch, "test", batch_idx)
+
+    def predict_step(self, batch, batch_idx, dataloader_idx: int = 0):
+        pred = self.model(batch.unsqueeze(0))
+        return self.post_processing(pred)
 
     def shared_step(self, batch, stage, batch_idx=None, log=True):
         images, masks = batch["image"], batch["masks"]

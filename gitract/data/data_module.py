@@ -13,8 +13,8 @@ from gitract.model.metrics import DiceMetric
 class LitDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        data_path: str,
-        holdout_path: str,
+        data_path: Optional[str],
+        holdout_path: Optional[str],
         spatial_size: Tuple[int,int],
         batch_size: int,
         num_workers: int,
@@ -26,8 +26,9 @@ class LitDataModule(pl.LightningDataModule):
 
         train_transforms, val_transforms, test_transforms = self._init_transforms()
 
-        self.train_dataset = CSVDataset(src=data_path, col_names=["image", "masks"], transform=train_transforms)
-        self.val_dataset = CSVDataset(src=holdout_path, col_names=["image", "masks"], transform=val_transforms)
+        if data_path and holdout_path:
+            self.train_dataset = CSVDataset(src=data_path, col_names=["image", "masks"], transform=train_transforms)
+            self.val_dataset = CSVDataset(src=holdout_path, col_names=["image", "masks"], transform=val_transforms)
 
 
     def _init_transforms(self):
@@ -55,7 +56,7 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
-        test_transforms = [
+        val_transforms = [
             monai.transforms.LoadImaged(keys=["image", "masks"]),
             # monai.transforms.AddChanneld(keys=["image", "masks"]),
             monai.transforms.AsChannelFirstd(keys=["image", "masks"], channel_dim=2),
@@ -68,8 +69,18 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
+        test_transforms = [
+            monai.transforms.LoadImaged(keys=["image", "masks"], allow_missing_keys=True),
+            monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1, allow_missing_keys=True),
+            monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True, allow_missing_keys=True),
+            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size[0],
+                                     mode="nearest", allow_missing_keys=True),
+            monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=spatial_size, allow_missing_keys=True),
+            monai.transforms.ToTensord(keys=["image", "masks"], allow_missing_keys=True),
+        ]
+
         train_transforms = monai.transforms.Compose(transforms)
-        val_transforms = monai.transforms.Compose(test_transforms)
+        val_transforms = monai.transforms.Compose(val_transforms)
         test_transforms = monai.transforms.Compose(test_transforms)
 
         return train_transforms, val_transforms, test_transforms
