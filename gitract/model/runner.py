@@ -21,6 +21,7 @@ class LitModule(pl.LightningModule):
             min_lr: int = 0,
             model: str = "unet",  # "smpUnet"
             background: bool = True,
+            pretrained="imagenet"
     ):
         super().__init__()
         self.classes = ['large_bowel', 'small_bowel', 'stomach']
@@ -70,7 +71,7 @@ class LitModule(pl.LightningModule):
                            in_channels=3)
         elif self.hparams.model == "smpUnet":
             return smp.Unet('efficientnet-b2',
-                            encoder_weights="imagenet",
+                            encoder_weights=self.hparams.pretrained,
                             classes=self.n_classes,
                             decoder_attention_type='scse',
                             decoder_channels = [256, 128, 64, 32, 16],
