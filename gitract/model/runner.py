@@ -79,6 +79,8 @@ class LitModule(pl.LightningModule):
         elif self.hparams.model == "smpUnetPP":
             return smp.UnetPlusPlus('efficientnet-b2',
                                     classes=self.n_classes,
+                                    decoder_attention_type='scse',
+                                    decoder_channels=[256, 128, 64, 32, 16],
                                     in_channels=3)
         elif self.hparams.model == "segResNet":
             return monai.networks.nets.SegResNet(
@@ -155,7 +157,7 @@ class LitModule(pl.LightningModule):
 
     def _init_loss_fn(self):
         return monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True,
-                                          batch=False, squared_pred=True,
+                                          batch=True, squared_pred=True,
                                           to_onehot_y=False)
         # return monai.losses.DiceCELoss(sigmoid=True,
         #                        include_background=True, batch=False, to_onehot_y=False)
