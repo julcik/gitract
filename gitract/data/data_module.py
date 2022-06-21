@@ -1,14 +1,48 @@
+from os import PathLike
+
+import cv2
 import numpy as np
 import pytorch_lightning as pl
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable, Tuple, List, Sequence
 import pandas as pd
 import monai
-from monai.data import CSVDataset, CacheNTransDataset
+from PIL import Image
+from monai.data import CSVDataset, CacheNTransDataset, PILReader
 from monai.data import DataLoader
-from monai.utils import set_determinism
+from monai.data.image_reader import PILImage
+from monai.utils import set_determinism, ensure_tuple
 import torch
 from torchmetrics import MetricCollection
 from gitract.model.metrics import DiceMetric
+
+
+def image_reader(file_name, numpy=False):
+    img = cv2.imread(file_name, cv2.IMREAD_UNCHANGED).astype('float32')
+    img = cv2.normalize(img, None, alpha=0, beta=255,
+                        norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    img = img.astype(np.uint8)
+    if numpy:
+        return img
+    return Image.fromarray(img)
+
+
+class GitractReader(PILReader):
+
+    def read(self, data, **kwargs):
+
+        img_: List[PILImage.Image] = []
+
+        filenames: Sequence[PathLike] = ensure_tuple(data)
+        kwargs_ = self.kwargs.copy()
+        kwargs_.update(kwargs)
+        for name in filenames:
+            img = image_reader(name)
+            if callable(self.converter):
+                img = self.converter(img)
+            img_.append(img)
+
+        return img_ if len(filenames) > 1 else img_[0]
+
 
 class LitDataModule(pl.LightningDataModule):
     def __init__(
@@ -70,12 +104,15 @@ class LitDataModule(pl.LightningDataModule):
         ]
 
         test_transforms = [
-            monai.transforms.LoadImaged(keys=["image", "masks"], allow_missing_keys=True),
-            monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1, allow_missing_keys=True),
-            monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True, allow_missing_keys=True),
-            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size[0],
+            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), allow_missing_keys=True),
+            monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1,
+                                             allow_missing_keys=True),
+            monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=True,
+                                                 allow_missing_keys=True),
+            monai.transforms.Resized(keys=["image", "masks"], size_mode="longest", spatial_size=spatial_size,
                                      mode="nearest", allow_missing_keys=True),
-            monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=spatial_size, allow_missing_keys=True),
+            monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=(spatial_size, spatial_size),
+                                                  allow_missing_keys=True),
             monai.transforms.ToTensord(keys=["image", "masks"], allow_missing_keys=True),
         ]
 

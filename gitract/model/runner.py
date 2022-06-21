@@ -67,7 +67,10 @@ class LitModule(pl.LightningModule):
             )
         elif self.hparams.model == "smpFPN":
             return smp.FPN('efficientnet-b2',
+                           encoder_weights=self.hparams.pretrained,
                            classes=self.n_classes,
+                           decoder_dropout = 0.1,
+                           decoder_merge_policy = "cat",
                            in_channels=3)
         elif self.hparams.model == "smpUnet":
             return smp.Unet('efficientnet-b2',
@@ -78,6 +81,7 @@ class LitModule(pl.LightningModule):
                             in_channels=3)
         elif self.hparams.model == "smpUnetPP":
             return smp.UnetPlusPlus('efficientnet-b2',
+                                    encoder_weights=self.hparams.pretrained,
                                     classes=self.n_classes,
                                     decoder_attention_type='scse',
                                     decoder_channels=[256, 128, 64, 32, 16],
