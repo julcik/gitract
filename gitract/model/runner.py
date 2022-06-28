@@ -26,7 +26,7 @@ class LitModule(pl.LightningModule):
     ):
         super().__init__()
         self.classes = ['large_bowel', 'small_bowel', 'stomach']
-        self.palette = torch.tensor(sns.color_palette(None, slices), requires_grad=False).T / slices
+        self.palette = torch.nn.Parameter(sns.color_palette(None, slices), requires_grad=False).T / slices
         if background:
             self.classes = ['background'] + self.classes
 
