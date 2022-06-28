@@ -39,9 +39,8 @@ THR = 0.45
 DEBUG = False # Debug complete pipeline
 
 @click.command()
-@click.option('--out_dir')
-@click.option('--data_path', default="../mmseg_train/splits/fold_0.csv")
-@click.option('--holdout_path', default="../mmseg_train/splits/holdout_0.csv")
+@click.option('--out_dir', "-o")
+@click.option('--data_path', "-d", default="../mmseg_train/splits/fold_0.csv")
 @click.option('--batch_size', default=BATCH_SIZE)
 @click.option('--num_workers', default=NUM_WORKERS)
 @click.option('--learning_rate', default=LEARNING_RATE)
@@ -54,7 +53,6 @@ DEBUG = False # Debug complete pipeline
 def train(
         out_dir,
         data_path: str,
-        holdout_path: str,
         batch_size: int,
         num_workers: int,
         learning_rate: float,
@@ -75,8 +73,7 @@ def train(
     pl.seed_everything(random_seed)
 
     data_module = LitDataModule(
-        data_path=data_path,
-        holdout_path=holdout_path,
+        data_path=Path(data_path),
         batch_size=batch_size,
         num_workers=num_workers,
         spatial_size=(spatial_size,spatial_size),

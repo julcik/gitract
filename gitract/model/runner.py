@@ -1,5 +1,5 @@
 from typing import Optional
-
+import seaborn as sns
 import monai
 import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
@@ -21,10 +21,12 @@ class LitModule(pl.LightningModule):
             min_lr: int = 0,
             model: str = "unet",  # "smpUnet"
             background: bool = True,
-            pretrained="imagenet"
+            pretrained=None,
+            slices=5
     ):
         super().__init__()
         self.classes = ['large_bowel', 'small_bowel', 'stomach']
+        self.palette = torch.tensor(sns.color_palette(None, slices)).T
         if background:
             self.classes = ['background'] + self.classes
 
@@ -50,7 +52,7 @@ class LitModule(pl.LightningModule):
         if self.hparams.model == "unet":
             return monai.networks.nets.UNet(
                 spatial_dims=2,
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
@@ -59,7 +61,7 @@ class LitModule(pl.LightningModule):
         elif self.hparams.model == "unetTiny":
             return monai.networks.nets.UNet(
                 spatial_dims=2,
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 channels=(4, 8, 16, 32, 64),
                 strides=(2, 2, 2, 2),
@@ -71,26 +73,26 @@ class LitModule(pl.LightningModule):
                            classes=self.n_classes,
                            decoder_dropout = 0.1,
                            decoder_merge_policy = "cat",
-                           in_channels=3)
+                           in_channels=self.hparams.slices)
         elif self.hparams.model == "smpUnet":
             return smp.Unet('efficientnet-b2',
                             encoder_weights=self.hparams.pretrained,
                             classes=self.n_classes,
                             decoder_attention_type='scse',
                             decoder_channels = [256, 128, 64, 32, 16],
-                            in_channels=3)
+                            in_channels=self.hparams.slices)
         elif self.hparams.model == "smpUnetPP":
             return smp.UnetPlusPlus('efficientnet-b2',
                                     encoder_weights=self.hparams.pretrained,
                                     classes=self.n_classes,
                                     decoder_attention_type='scse',
                                     decoder_channels=[256, 128, 64, 32, 16],
-                                    in_channels=3)
+                                    in_channels=self.hparams.slices)
         elif self.hparams.model == "segResNet":
             return monai.networks.nets.SegResNet(
                 spatial_dims=2,
                 init_filters=8,
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 dropout_prob=None,
                 act=('RELU', {'inplace': True}),
@@ -105,7 +107,7 @@ class LitModule(pl.LightningModule):
             strides = [[1, 1], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2]]
             return monai.networks.nets.DynUNet(
                 spatial_dims=2,
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 kernel_size=[[3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3]],
                 strides=strides,
@@ -121,7 +123,7 @@ class LitModule(pl.LightningModule):
         elif self.hparams.model == "AttentionUnet":
             return monai.networks.nets.AttentionUnet(
                 spatial_dims=2,
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
@@ -131,7 +133,7 @@ class LitModule(pl.LightningModule):
         elif self.hparams.model == "UNETR":
             return monai.networks.nets.UNETR(
                 spatial_dims=2,
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 img_size=320,
                 feature_size=32,
@@ -146,7 +148,7 @@ class LitModule(pl.LightningModule):
         elif self.hparams.model == "SwinUNETR":
             return monai.networks.nets.SwinUNETR(
                 img_size=(320,320),
-                in_channels=3,
+                in_channels=self.hparams.slices,
                 out_channels=self.n_classes,
                 depths=(2, 2, 2, 2),
                 num_heads=(3, 6, 12, 24),
@@ -240,6 +242,7 @@ class LitModule(pl.LightningModule):
             batch_size = images.shape[0]
             self._log(loss, batch_size, stage)
 
+
         if batch_idx == 1:
             y_pred = torch.sigmoid(y_pred)
 
@@ -247,7 +250,7 @@ class LitModule(pl.LightningModule):
                                                  torch.Tensor.cpu(make_grid(
                                                      [
                                                          torch.Tensor.cpu(
-                                                             make_grid([images[b],
+                                                             make_grid([torch.tensordot(self.palette, images[b], dims=([1], [0])),
                                                                         masks[b][-3:]] +
                                                                        [y_pred[b, clz].unsqueeze(0).repeat([3, 1, 1])
                                                                         for clz in range(self.n_classes)],
