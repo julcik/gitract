@@ -85,6 +85,7 @@ class LitDataModule(pl.LightningDataModule):
 
         if data_path:
             df = parse_train(data_path,  slices=slices, stride = stride)
+            df = df.sample(frac=1.0, replace=False, random_state=42)
 
             from sklearn.model_selection import GroupKFold
             split = list(GroupKFold(5).split(df["patient"], groups=df["patient"]))
