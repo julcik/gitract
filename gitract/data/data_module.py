@@ -123,6 +123,7 @@ class LitDataModule(pl.LightningDataModule):
             monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.2),
             monai.transforms.RandGaussianNoised(keys=["image"], prob=0.1),
             # monai.transforms.RandFlipd(keys=["image", "masks"], prob=0.5),
+            monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.5),
             monai.transforms.RandRotated(keys=["image", "masks"], range_x=5, range_y=0, prob=0.2),
             monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.2),
             monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.3),

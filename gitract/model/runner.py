@@ -21,8 +21,8 @@ class LitModule(pl.LightningModule):
             min_lr: int = 0,
             model: str = "unet",  # "smpUnet"
             background: bool = True,
-            pretrained=None,
-            slices=5
+            pretrained: Optional[str] = None,
+            slices=5,
     ):
         super().__init__()
         self.classes = ['large_bowel', 'small_bowel', 'stomach']

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import  Optional
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from gitract.data.data_module import LitDataModule
@@ -50,6 +51,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--model', default="smpUnet")
 @click.option('--spatial_size', default=SPATIAL_SIZE)
 @click.option('--background', default=False)
+@click.option('--checkpoint_path', default=None)
 def train(
         out_dir,
         data_path: str,
@@ -67,7 +69,8 @@ def train(
         random_seed: int = RANDOM_SEED,
         model: str = "smpUnet",
         spatial_size: int = SPATIAL_SIZE,
-        background: bool = True
+        background: bool = True,
+        checkpoint_path: Optional[str] = None
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -89,6 +92,9 @@ def train(
         model=model,
         background=background
     )
+
+    if checkpoint_path:
+        module.load_state_dict(torch.load(checkpoint_path, map_location=model.device)['state_dict'])
 
     if device == "cpu":
         gpus = 0
