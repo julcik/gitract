@@ -94,7 +94,7 @@ def train(
     )
 
     if checkpoint_path:
-        module.load_state_dict(torch.load(checkpoint_path, map_location=model.device)['state_dict'])
+        module.load_state_dict(torch.load(checkpoint_path, map_location=module.device)['state_dict'])
 
     if device == "cpu":
         gpus = 0
