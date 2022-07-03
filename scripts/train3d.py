@@ -41,7 +41,7 @@ DEBUG = False # Debug complete pipeline
 
 @click.command()
 @click.option('--out_dir', "-o")
-@click.option('--data_path', "-d")
+@click.option('--data_path', "-d", default="../mmseg_train/splits/fold_0.csv")
 @click.option('--batch_size', default=BATCH_SIZE)
 @click.option('--num_workers', default=NUM_WORKERS)
 @click.option('--learning_rate', default=LEARNING_RATE)
@@ -52,7 +52,6 @@ DEBUG = False # Debug complete pipeline
 @click.option('--spatial_size', default=SPATIAL_SIZE)
 @click.option('--background', default=False)
 @click.option('--checkpoint_path', default=None)
-@click.option('--fold', default=0)
 def train(
         out_dir,
         data_path: str,
@@ -71,8 +70,7 @@ def train(
         model: str = "smpUnet",
         spatial_size: int = SPATIAL_SIZE,
         background: bool = True,
-        checkpoint_path: Optional[str] = None,
-        fold: int = 0
+        checkpoint_path: Optional[str] = None
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -82,7 +80,6 @@ def train(
         batch_size=batch_size,
         num_workers=num_workers,
         spatial_size=(spatial_size,spatial_size),
-        fold = fold,
     )
 
     module = LitModule(
