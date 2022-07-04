@@ -83,7 +83,7 @@ class LitModule(pl.LightningModule):
                             decoder_channels = [256, 128, 64, 32, 16],
                             in_channels=self.hparams.slices)
         elif self.hparams.model == "smpUnetPP":
-            return smp.UnetPlusPlus('efficientnet-b2',
+            return smp.UnetPlusPlus('efficientnet-b4',
                                     encoder_weights=self.hparams.pretrained,
                                     classes=self.n_classes,
                                     decoder_attention_type='scse',
