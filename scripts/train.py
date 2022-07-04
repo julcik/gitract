@@ -102,7 +102,8 @@ def train(
         min_lr=min_lr,
         model=model,
         background=background,
-        pretrained=pretrained
+        pretrained=pretrained,
+        slices=slices,
     )
 
     if checkpoint_path:
