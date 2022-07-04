@@ -53,6 +53,9 @@ DEBUG = False # Debug complete pipeline
 @click.option('--background', default=False)
 @click.option('--checkpoint_path', default=None)
 @click.option('--fold', default=0)
+@click.option('--pretrained', default="imagenet")
+@click.option('--slices', default=5)
+@click.option('--stride', default=1)
 def train(
         out_dir,
         data_path: str,
@@ -72,7 +75,10 @@ def train(
         spatial_size: int = SPATIAL_SIZE,
         background: bool = True,
         checkpoint_path: Optional[str] = None,
-        fold: int = 0
+        fold: int = 0,
+        pretrained: Optional[str] = "imagenet",
+        slices: int = 5,
+        stride: int = 1
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -83,6 +89,8 @@ def train(
         num_workers=num_workers,
         spatial_size=(spatial_size,spatial_size),
         fold = fold,
+        slices=slices,
+        stride=stride
     )
 
     module = LitModule(
@@ -93,7 +101,8 @@ def train(
         T_0=25,
         min_lr=min_lr,
         model=model,
-        background=background
+        background=background,
+        pretrained=pretrained
     )
 
     if checkpoint_path:
