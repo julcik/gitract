@@ -111,8 +111,8 @@ class LitDataModule(pl.LightningDataModule):
             split = list(GroupKFold(5).split(df["patient"], groups=df["patient"]))
             train_idx, valid_idx = split[self.fold]
 
-            self.df_train = df.iloc[train_idx]
-            self.df_val = df.iloc[valid_idx]
+            self.df_train = df.iloc[train_idx][["image", "masks"]].reset_index(drop=True)
+            self.df_val = df.iloc[valid_idx][["image", "masks"]].reset_index(drop=True)
 
             self.train_dataset = CSVDataset(self.df_train[["image", "masks"]],
                               col_names=["image", "masks"],
@@ -223,16 +223,21 @@ class LitDataModule3d(LitDataModule):
             split = list(GroupKFold(5).split(df["patient"], groups=df["patient"]))
             train_idx, valid_idx = split[self.fold]
 
-            self.df_train = df.iloc[train_idx]
-            self.df_val = df.iloc[valid_idx]
+            self.df_train = df.iloc[train_idx][["image", "masks"]].reset_index(drop=True)
+            self.df_val = df.iloc[valid_idx][["image", "masks"]].reset_index(drop=True)
 
-            print("dataset len", self.df_train.shape[0], self.df_val.shape[0])
 
-            self.train_dataset = CacheDataset(
-                                CSVDataset(self.df_train[["image", "masks"]],col_names=["image", "masks"],
+
+            train_csv_dataset = CSVDataset(self.df_train[["image", "masks"]],col_names=["image", "masks"],
                                            transform=monai.transforms.Compose([
                                                monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
-                                               monai.transforms.AddChanneld(keys=["image"])])),
+                                               monai.transforms.AddChanneld(keys=["image"])])
+
+                                           )
+            print("dataset len", self.df_train.shape[0], len(train_csv_dataset), self.df_val.shape[0])
+            assert len(train_csv_dataset) == self.df_train.shape[0]
+            self.train_dataset = CacheDataset(
+                                train_csv_dataset,
                               transform=train_transforms
                               )
             #CSVDataset(src=data_path, col_names=["image", "masks"], transform=train_transforms)
