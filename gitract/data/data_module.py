@@ -255,14 +255,15 @@ class LitDataModule3d(LitDataModule):
             # # monai.transforms.Orientationd(keys=["image", "masks"], axcodes="RAS"),
             # # monai.transforms.Spacingd(keys=["image", "masks"], pixdim=(
             # #     1.5, 1.5, 2.0), mode=("bilinear", "nearest")),
-            # monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv= None, factor=1/255.0 - 1),
-            # # monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=False),
+            monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv= None, factor=1/255.0 - 1),
+            monai.transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             #
             # monai.transforms.RandAdjustContrastd(keys=["image"], prob=0.2),
-            # monai.transforms.RandGaussianNoised(keys=["image"], prob=0.1),
+            monai.transforms.RandGaussianNoised(keys=["image"], prob=0.1),
+            #
             # # monai.transforms.RandFlipd(keys=["image", "masks"], prob=0.5),
             # monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.5),
-            # monai.transforms.RandRotated(keys=["image", "masks"], range_x=5, range_y=0, prob=0.2),
+            monai.transforms.RandRotated(keys=["image", "masks"], range_x=5, range_y=0, prob=0.2),
             # monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.2),
             # monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3),
             #                                 prob=0.3),
@@ -279,6 +280,8 @@ class LitDataModule3d(LitDataModule):
             #     image_threshold=0,
             # ),
 
+            monai.transforms.RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            monai.transforms.RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
             monai.transforms.RandSpatialCropd(keys=["image", "masks"],
                                               roi_size=spatial_size,
                                               random_size=False),
@@ -296,7 +299,7 @@ class LitDataModule3d(LitDataModule):
             # monai.transforms.Spacingd(keys=["image", "masks"], pixdim=(
             #     1.5, 1.5, 2.0), mode=("bilinear", "nearest")),
             monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1),
-            # monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=False),
+            monai.transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             # monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=[spatial_size[0],spatial_size[0]]),
             # monai.transforms.CropForegroundd(keys=["image", "masks"], source_key="image"),
             # monai.transforms.CenterSpatialCropd(keys=["image", "masks"], roi_size=[spatial_size[0],spatial_size[0],spatial_size[0]]),
