@@ -8,7 +8,7 @@ from typing import Optional, Callable, Tuple, List, Sequence, Union, Dict
 import pandas as pd
 import monai
 from PIL import Image
-from monai.data import CSVDataset, CacheNTransDataset, PILReader
+from monai.data import CSVDataset, CacheNTransDataset, PILReader, CacheDataset
 from monai.data import DataLoader
 from monai.data.image_reader import PILImage, ImageReader, _copy_compatible_dict, _stack_images
 from monai.utils import set_determinism, ensure_tuple
@@ -226,13 +226,23 @@ class LitDataModule3d(LitDataModule):
             self.df_train = df.iloc[train_idx]
             self.df_val = df.iloc[valid_idx]
 
-            self.train_dataset = CSVDataset(self.df_train[["image", "masks"]],
-                              col_names=["image", "masks"],
+            print("dataset len", self.df_train.shape[0], self.df_val.shape[0])
+
+            self.train_dataset = CacheDataset(
+                                CSVDataset(self.df_train[["image", "masks"]],col_names=["image", "masks"],
+                                           transform=monai.transforms.Compose([
+                                               monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
+                                               monai.transforms.AddChanneld(keys=["image"])])),
                               transform=train_transforms
                               )
             #CSVDataset(src=data_path, col_names=["image", "masks"], transform=train_transforms)
-            self.val_dataset = CSVDataset(self.df_val[["image", "masks"]],
-                              col_names=["image", "masks"],
+            self.val_dataset = CacheDataset(
+                CSVDataset(self.df_val[["image", "masks"]], col_names=["image", "masks"],
+                           transform=monai.transforms.Compose([
+                               monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(),
+                                                           image_only=True),
+                               monai.transforms.AddChanneld(keys=["image"])])
+                           ),
                               transform=val_transforms
                               )
 
@@ -248,8 +258,8 @@ class LitDataModule3d(LitDataModule):
 
         transforms = [
             # monai.transforms.LoadImaged(keys=["image", "masks"]),
-            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
-            monai.transforms.AddChanneld(keys=["image"]),
+            # monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
+            # monai.transforms.AddChanneld(keys=["image"]),
             # monai.transforms.EnsureChannelFirstd(keys=["image", "masks"]),
             # # monai.transforms.AsChannelFirstd(keys=["masks"], channel_dim=2),
             # # monai.transforms.Orientationd(keys=["image", "masks"], axcodes="RAS"),
@@ -290,10 +300,10 @@ class LitDataModule3d(LitDataModule):
         ]
 
         val_transforms = [
-            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
+            # monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
             # monai.transforms.EnsureChannelFirstd(keys=["image", "masks"]),
             # monai.transforms.LoadImaged(keys=["image", "masks"]),
-            monai.transforms.AddChanneld(keys=["image"]),
+            # monai.transforms.AddChanneld(keys=["image"]),
             # monai.transforms.AsChannelFirstd(keys=["masks"], channel_dim=2),
             # monai.transforms.Orientationd(keys=["image", "masks"], axcodes="RAS"),
             # monai.transforms.Spacingd(keys=["image", "masks"], pixdim=(
