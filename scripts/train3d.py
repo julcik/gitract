@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from gitract.data.data_module import LitDataModule
+from gitract.data.data_module import LitDataModule, LitDataModule3d
 from gitract.model.runner import LitModule
 import click
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -74,13 +74,21 @@ def train(
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
+    spatial_size = [spatial_size, spatial_size, 96]
 
-    data_module = LitDataModule(
+    data_module = LitDataModule3d(
         data_path=Path(data_path),
         batch_size=batch_size,
         num_workers=num_workers,
-        spatial_size=(spatial_size,spatial_size),
+        spatial_size=spatial_size,
     )
+
+    # e = next(iter(data_module.val_dataset))
+    # print(e)
+    # print(e["image"].shape, e["masks"].shape)
+    # print("expected", torch.Size([1, 276, 276, 80]), torch.Size([3, 276, 276, 80]))
+
+    # return
 
     module = LitModule(
         learning_rate=learning_rate,
@@ -90,7 +98,8 @@ def train(
         T_0=25,
         min_lr=min_lr,
         model=model,
-        background=background
+        background=background,
+        spatial_size = spatial_size
     )
 
     if checkpoint_path:

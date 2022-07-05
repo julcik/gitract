@@ -4,6 +4,7 @@ import monai
 import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 import torch
+from monai.inferers import sliding_window_inference
 from torchmetrics import MetricCollection
 from torchvision.utils import make_grid
 
@@ -23,8 +24,11 @@ class LitModule(pl.LightningModule):
             background: bool = True,
             pretrained: Optional[str] = None,
             slices=5,
+            spatial_size=(320,320)
     ):
         super().__init__()
+        self.spatial_dims = len(spatial_size)
+        print("spatial_dims", self.spatial_dims)
         self.classes = ['large_bowel', 'small_bowel', 'stomach']
         self.palette = torch.tensor(sns.color_palette(None, slices), requires_grad=False).T / slices
         self.palette = torch.nn.Parameter(self.palette, requires_grad=False)
@@ -52,8 +56,8 @@ class LitModule(pl.LightningModule):
         print(f"Init {self.hparams.model}")
         if self.hparams.model == "unet":
             return monai.networks.nets.UNet(
-                spatial_dims=2,
-                in_channels=self.hparams.slices,
+                spatial_dims=self.spatial_dims,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
@@ -61,14 +65,15 @@ class LitModule(pl.LightningModule):
             )
         elif self.hparams.model == "unetTiny":
             return monai.networks.nets.UNet(
-                spatial_dims=2,
-                in_channels=self.hparams.slices,
+                spatial_dims=self.spatial_dims,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 channels=(4, 8, 16, 32, 64),
                 strides=(2, 2, 2, 2),
                 num_res_units=2,
             )
         elif self.hparams.model == "smpFPN":
+            assert self.spatial_dims == 2
             return smp.FPN('efficientnet-b2',
                            encoder_weights=self.hparams.pretrained,
                            classes=self.n_classes,
@@ -76,6 +81,7 @@ class LitModule(pl.LightningModule):
                            decoder_merge_policy = "cat",
                            in_channels=self.hparams.slices)
         elif self.hparams.model == "smpUnet":
+            assert self.spatial_dims == 2
             return smp.Unet('efficientnet-b2',
                             encoder_weights=self.hparams.pretrained,
                             classes=self.n_classes,
@@ -83,6 +89,7 @@ class LitModule(pl.LightningModule):
                             decoder_channels = [256, 128, 64, 32, 16],
                             in_channels=self.hparams.slices)
         elif self.hparams.model == "smpUnetPP":
+            assert self.spatial_dims == 2
             return smp.UnetPlusPlus('efficientnet-b4',
                                     encoder_weights=self.hparams.pretrained,
                                     classes=self.n_classes,
@@ -91,9 +98,9 @@ class LitModule(pl.LightningModule):
                                     in_channels=self.hparams.slices)
         elif self.hparams.model == "segResNet":
             return monai.networks.nets.SegResNet(
-                spatial_dims=2,
+                spatial_dims=self.spatial_dims,
                 init_filters=8,
-                in_channels=self.hparams.slices,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 dropout_prob=None,
                 act=('RELU', {'inplace': True}),
@@ -107,8 +114,8 @@ class LitModule(pl.LightningModule):
             # https://github.com/gift-surg/MONAIfbs/blob/main/monaifbs/src/train/monai_dynunet_training.py
             strides = [[1, 1], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2]]
             return monai.networks.nets.DynUNet(
-                spatial_dims=2,
-                in_channels=self.hparams.slices,
+                spatial_dims=self.spatial_dims,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 kernel_size=[[3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3]],
                 strides=strides,
@@ -123,8 +130,8 @@ class LitModule(pl.LightningModule):
                 trans_bias=False)
         elif self.hparams.model == "AttentionUnet":
             return monai.networks.nets.AttentionUnet(
-                spatial_dims=2,
-                in_channels=self.hparams.slices,
+                spatial_dims=self.spatial_dims,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
@@ -133,8 +140,8 @@ class LitModule(pl.LightningModule):
                 dropout=0.0)
         elif self.hparams.model == "UNETR":
             return monai.networks.nets.UNETR(
-                spatial_dims=2,
-                in_channels=self.hparams.slices,
+                spatial_dims=self.spatial_dims,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 img_size=320,
                 feature_size=32,
@@ -148,8 +155,8 @@ class LitModule(pl.LightningModule):
                 dropout_rate=0.0,)
         elif self.hparams.model == "SwinUNETR":
             return monai.networks.nets.SwinUNETR(
-                img_size=(320,320),
-                in_channels=self.hparams.slices,
+                img_size=self.hparams.spatial_size,
+                in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
                 depths=(2, 2, 2, 2),
                 num_heads=(3, 6, 12, 24),
@@ -160,7 +167,7 @@ class LitModule(pl.LightningModule):
                 dropout_path_rate=0.0,
                 normalize=True,
                 use_checkpoint=True,
-                spatial_dims=2)
+                spatial_dims=self.spatial_dims)
 
     def _init_loss_fn(self):
         return monai.losses.DiceFocalLoss(sigmoid=True, smooth_nr=0.01, smooth_dr=0.01, include_background=True,
@@ -220,9 +227,12 @@ class LitModule(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         self.shared_step(batch, "test", batch_idx)
 
-    def predict_step(self, batch, batch_idx, dataloader_idx: int = 0):
+    def predict_step(self, batch, batch_idx, dataloader_idx: int = 0, post_processing=True):
         pred = self.model(batch.unsqueeze(0))
-        return self.post_processing(pred)
+        if post_processing:
+            return self.post_processing(pred)
+        else:
+            return pred
 
     def shared_step(self, batch, stage, batch_idx=None, log=True):
         images, masks = batch["image"], batch["masks"]
@@ -231,7 +241,11 @@ class LitModule(pl.LightningModule):
         #     mask = np.array(masks[i].detach().cpu().moveaxis(0,-1))*255
         #     Image.fromarray(np.hstack((img, mask)).astype(np.uint8)).save(f"{str(batch_idx)}_{str(i)}.png")
 
-        y_pred = self.model(images)
+        if stage == "train":
+            y_pred = self.model(images)
+        else:
+            y_pred = self._sliding_window_inference(images)
+
         if stage=="train" and hasattr(self.model, "deep_supervision") and self.model.deep_supervision:
             masks = masks.unsqueeze(1).repeat([1,y_pred.size(1),1,1,1])
         loss = self.loss_fn(y_pred, masks)
@@ -244,7 +258,8 @@ class LitModule(pl.LightningModule):
             self._log(loss, batch_size, stage)
 
 
-        if batch_idx == 1:
+        if batch_idx == 1 and self.spatial_dims==2:
+            # TODO
             y_pred = torch.sigmoid(y_pred)
 
             self.loggers[1].experiment.add_image(f"{stage}/prediction",
@@ -280,3 +295,14 @@ class LitModule(pl.LightningModule):
         module.eval()
 
         return module
+
+    def _sliding_window_inference(self, input):
+
+        return sliding_window_inference(
+            inputs=input,
+            roi_size=self.hparams.spatial_size,
+            sw_batch_size=1,
+            predictor=self.model,
+            overlap=0.5,
+        )
+

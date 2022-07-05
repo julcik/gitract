@@ -61,7 +61,26 @@ class GitractReader(PILReader):
             img_.append(img)
         if "." not in filenames[0] and len(img_) > 3: # if masks combine by class len
             img_ = [Image.fromarray(np.stack(img_[i:i+3], axis=-1).astype(np.uint8)) for i in range(0,len(img_),3)]
+            # print(img_[0].shape)
         return img_ if len(filenames) > 1 else img_[0]
+
+    def get_data(self, img):
+
+        img_array: List[np.ndarray] = []
+        compatible_meta: Dict = {}
+
+        for i in ensure_tuple(img):
+            header = self._get_meta_dict(i)
+            header["spatial_shape"] = self._get_spatial_shape(i)
+            data = np.moveaxis(np.asarray(i), 0, 1)
+            if data.ndim == 3:
+                data = np.moveaxis(data,-1,0)
+            data = data[...,None]
+            img_array.append(data)
+            header["original_channel_dim"] = "no_channel" if len(data.shape) == len(header["spatial_shape"]) else -1
+            _copy_compatible_dict(header, compatible_meta)
+        res = _stack_images(img_array, compatible_meta), compatible_meta
+        return res
 
 
 class LitDataModule(pl.LightningDataModule):
@@ -229,7 +248,7 @@ class LitDataModule3d(LitDataModule):
 
         transforms = [
             # monai.transforms.LoadImaged(keys=["image", "masks"]),
-            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader()),
+            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
             monai.transforms.AddChanneld(keys=["image"]),
             # monai.transforms.EnsureChannelFirstd(keys=["image", "masks"]),
             # # monai.transforms.AsChannelFirstd(keys=["masks"], channel_dim=2),
@@ -252,7 +271,7 @@ class LitDataModule3d(LitDataModule):
             # monai.transforms.RandCropByPosNegLabeld(
             #     keys=["image", "masks"],
             #     label_key="masks",
-            #     spatial_size=(spatial_size[0],spatial_size[0],spatial_size[0]),
+            #     spatial_size=spatial_size,
             #     pos=1,
             #     neg=1,
             #     num_samples=4,
@@ -260,24 +279,27 @@ class LitDataModule3d(LitDataModule):
             #     image_threshold=0,
             # ),
 
-
+            monai.transforms.RandSpatialCropd(keys=["image", "masks"],
+                                              roi_size=spatial_size,
+                                              random_size=False),
+            monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=spatial_size),
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
         val_transforms = [
-            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader()),
-            monai.transforms.EnsureChannelFirstd(keys=["image", "masks"]),
+            monai.transforms.LoadImaged(keys=["image", "masks"], reader=GitractReader(), image_only=True),
+            # monai.transforms.EnsureChannelFirstd(keys=["image", "masks"]),
             # monai.transforms.LoadImaged(keys=["image", "masks"]),
-            # monai.transforms.AddChanneld(keys=["image", "masks"]),
+            monai.transforms.AddChanneld(keys=["image"]),
             # monai.transforms.AsChannelFirstd(keys=["masks"], channel_dim=2),
             # monai.transforms.Orientationd(keys=["image", "masks"], axcodes="RAS"),
             # monai.transforms.Spacingd(keys=["image", "masks"], pixdim=(
             #     1.5, 1.5, 2.0), mode=("bilinear", "nearest")),
             monai.transforms.ScaleIntensityd(keys="image", minv=None, maxv=None, factor=1 / 255.0 - 1),
             # monai.transforms.NormalizeIntensityd(keys="image", subtrahend=mean, divisor=std, channel_wise=False),
-            monai.transforms.ResizeWithPadOrCrop(keys=["image", "masks"], spatial_size=spatial_size[0]),
+            # monai.transforms.ResizeWithPadOrCropd(keys=["image", "masks"], spatial_size=[spatial_size[0],spatial_size[0]]),
             # monai.transforms.CropForegroundd(keys=["image", "masks"], source_key="image"),
-            # monai.transforms.CenterSpatialCropd(keys=["image", "masks"], roi_size=(spatial_size[0],spatial_size[0])),
+            # monai.transforms.CenterSpatialCropd(keys=["image", "masks"], roi_size=[spatial_size[0],spatial_size[0],spatial_size[0]]),
             monai.transforms.ToTensord(keys=["image", "masks"]),
         ]
 
@@ -309,7 +331,7 @@ class LitDataModule3d(LitDataModule):
     def _dataloader(self, dataset: CSVDataset, train: bool = False) -> DataLoader:
         return DataLoader(
             dataset,
-            batch_size=self.hparams.batch_size,
+            batch_size=self.hparams.batch_size if train else 1,
             shuffle=train,
             drop_last=train,
             num_workers=self.hparams.num_workers,

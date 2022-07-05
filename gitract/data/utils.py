@@ -63,21 +63,39 @@ def parse_train(data_path, slices=3, stride = 2):
     # print(id2img)
     id2imgs = {}
 
-    half_dist = slices // 2
-    for id, path in id2img.items():
-        s = get_slice(path)
+    if slices > 0:
+        half_dist = slices // 2
+        for id, path in id2img.items():
+            s = get_slice(path)
 
-        file_names = [path.replace(f"slice_{s:04d}", f"slice_{max(0,s + i):04d}") for i in range(-stride * half_dist, 1 + stride * half_dist, stride)]
+            file_names = [path.replace(f"slice_{s:04d}", f"slice_{max(0,s + i):04d}") for i in range(-stride * half_dist, 1 + stride * half_dist, stride)]
 
-        for i in range(half_dist-1,-1,-1):
-            if not os.path.exists(file_names[i]):
-                file_names[i] = file_names[i+1]
-        for i in range(half_dist+1,2 * half_dist+1):
-            if not os.path.exists(file_names[i]):
-                file_names[i] = file_names[i-1]
-        id2imgs[id] = file_names
+            for i in range(half_dist-1,-1,-1):
+                if not os.path.exists(file_names[i]):
+                    file_names[i] = file_names[i+1]
+            for i in range(half_dist+1,2 * half_dist+1):
+                if not os.path.exists(file_names[i]):
+                    file_names[i] = file_names[i-1]
+            id2imgs[id] = file_names
+        df_train["image"] = df_train.id.map(id2imgs)
+    else:
+        # all slices
+        print(df_train.head())
+        df_train["image"] = df_train["image_files"].apply(lambda x: [x])
+        # df_train["masks"] = df_train["masks"].apply(lambda x: [x])
+        df_train = (df_train
+                    .sort_values(["id"])
+                    .groupby("days")
+                    .agg({'id': 'first',
+                          'masks': sum,
+                          'patient': 'first',
+                          'days': 'first',
+                          'image': sum,
+                          'shape': 'first',
+                          })
+                    )
 
-    df_train["image"] = df_train.id.map(id2imgs)
+        print(df_train.head())
 
     return df_train
 
