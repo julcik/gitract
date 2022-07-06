@@ -238,7 +238,8 @@ class LitDataModule3d(LitDataModule):
             assert len(train_csv_dataset) == self.df_train.shape[0]
             self.train_dataset = CacheDataset(
                                 train_csv_dataset,
-                              transform=train_transforms
+                              transform=train_transforms,
+                              cache_rate=0.7
                               )
             #CSVDataset(src=data_path, col_names=["image", "masks"], transform=train_transforms)
             self.val_dataset = CacheDataset(
@@ -248,7 +249,8 @@ class LitDataModule3d(LitDataModule):
                                                            image_only=True),
                                monai.transforms.AddChanneld(keys=["image"])])
                            ),
-                              transform=val_transforms
+                              transform=val_transforms,
+                              cache_rate=0.5
                               )
 
             # for d in self.train_dataset:
