@@ -227,8 +227,11 @@ class LitModule(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         self.shared_step(batch, "test", batch_idx)
 
-    def predict_step(self, batch, batch_idx, dataloader_idx: int = 0, post_processing=True):
-        pred = self.model(batch.unsqueeze(0))
+    def predict_step(self, batch, batch_idx, dataloader_idx: int = 0, post_processing=True, sliding_window=True):
+        if sliding_window:
+            pred = self._sliding_window_inference(batch.unsqueeze(0))
+        else:
+            pred = self.model(batch.unsqueeze(0))
         if post_processing:
             return self.post_processing(pred)
         else:
@@ -248,6 +251,7 @@ class LitModule(pl.LightningModule):
 
         if stage=="train" and hasattr(self.model, "deep_supervision") and self.model.deep_supervision:
             masks = masks.unsqueeze(1).repeat([1,y_pred.size(1),1,1,1])
+        # print(y_pred.shape, masks.shape)
         loss = self.loss_fn(y_pred, masks)
 
         if stage != "train":

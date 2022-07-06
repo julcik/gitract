@@ -52,6 +52,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--spatial_size', default=SPATIAL_SIZE)
 @click.option('--background', default=False)
 @click.option('--checkpoint_path', default=None)
+@click.option('--fold', default=0)
 def train(
         out_dir,
         data_path: str,
@@ -70,7 +71,8 @@ def train(
         model: str = "smpUnet",
         spatial_size: int = SPATIAL_SIZE,
         background: bool = True,
-        checkpoint_path: Optional[str] = None
+        checkpoint_path: Optional[str] = None,
+        fold: int = 0,
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -81,6 +83,7 @@ def train(
         batch_size=batch_size,
         num_workers=num_workers,
         spatial_size=spatial_size,
+        fold=fold,
     )
 
     # e = next(iter(data_module.val_dataset))
