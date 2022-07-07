@@ -143,16 +143,17 @@ class LitModule(pl.LightningModule):
                 spatial_dims=self.spatial_dims,
                 in_channels=self.hparams.slices if self.spatial_dims==2 else 1,
                 out_channels=self.n_classes,
-                img_size=320,
-                feature_size=32,
-                hidden_size=768,
-                mlp_dim=1024,
-                num_heads=6, #12
-                pos_embed='conv',
-                norm_name='instance',
-                conv_block=True,
-                res_block=True,
-                dropout_rate=0.0,)
+                img_size=self.hparams.spatial_size,
+                feature_size = 16,
+                hidden_size = 768,
+                mlp_dim = 3072,
+                num_heads = 12,
+                pos_embed = "perceptron",
+                norm_name = "instance",
+                conv_block = True,
+                res_block = True,
+                dropout_rate = 0.0,
+                )
         elif self.hparams.model == "SwinUNETR":
             return monai.networks.nets.SwinUNETR(
                 img_size=self.hparams.spatial_size,

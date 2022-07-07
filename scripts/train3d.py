@@ -53,6 +53,8 @@ DEBUG = False # Debug complete pipeline
 @click.option('--background', default=False)
 @click.option('--checkpoint_path', default=None)
 @click.option('--fold', default=0)
+@click.option('--cache_rate_train', default=0.7)
+@click.option('--cache_rate_val', default=0.5)
 def train(
         out_dir,
         data_path: str,
@@ -73,6 +75,8 @@ def train(
         background: bool = True,
         checkpoint_path: Optional[str] = None,
         fold: int = 0,
+        cache_rate_train: float = 0.7,
+        cache_rate_val: float = 0.5
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -84,6 +88,8 @@ def train(
         num_workers=num_workers,
         spatial_size=spatial_size,
         fold=fold,
+        cache_rate_train=cache_rate_train,
+        cache_rate_val=cache_rate_val
     )
 
     # e = next(iter(data_module.val_dataset))
@@ -106,7 +112,21 @@ def train(
     )
 
     if checkpoint_path:
-        module.load_state_dict(torch.load(checkpoint_path, map_location=module.device)['state_dict'])
+        chp = torch.load(checkpoint_path, map_location=module.device)
+        if 'state_dict' in chp:
+            module.load_state_dict(torch.load(checkpoint_path, map_location=module.device)['state_dict'])
+            print("Checkpoint loaded")
+        else:
+            model_dict = module.model.state_dict()
+            for pname in chp.keys():
+                if pname in model_dict and chp[pname].size() == model_dict[pname].size():
+                    pval = chp[pname]
+                    model_dict[pname] = pval.clone().to(model_dict[pname].device)
+                else:
+                    print(f"Ignoring value for {pname}")
+
+            module.model.load_state_dict(model_dict)
+            print("Model pretrain loaded")
 
     if device == "cpu":
         gpus = 0
@@ -126,9 +146,12 @@ def train(
                        dirpath = out_dir/'checkpoints',
                        filename = '{epoch}-val_loss{val/loss:.2f}-val_mDice{val/mDice:.2f}',
                        auto_insert_metric_name=False,
-                       save_top_k = -1
-        )
-    ]
+                       save_top_k = -1,
+                       every_n_epochs=10
+                   ),
+        ],
+        val_check_interval=10,
+
     )
 
     trainer.fit(module, datamodule=data_module)

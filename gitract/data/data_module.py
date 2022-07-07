@@ -206,6 +206,8 @@ class LitDataModule(pl.LightningDataModule):
 class LitDataModule3d(LitDataModule):
     def __init__(
         self,
+        cache_rate_train=0.7,
+        cache_rate_val=0.5,
         **kwargs
 
     ):
@@ -239,7 +241,7 @@ class LitDataModule3d(LitDataModule):
             self.train_dataset = CacheDataset(
                                 train_csv_dataset,
                               transform=train_transforms,
-                              cache_rate=0.7
+                              cache_rate=cache_rate_train
                               )
             #CSVDataset(src=data_path, col_names=["image", "masks"], transform=train_transforms)
             self.val_dataset = CacheDataset(
@@ -250,7 +252,7 @@ class LitDataModule3d(LitDataModule):
                                monai.transforms.AddChanneld(keys=["image"])])
                            ),
                               transform=val_transforms,
-                              cache_rate=0.5
+                              cache_rate=cache_rate_val
                               )
 
             # for d in self.train_dataset:
