@@ -6,7 +6,7 @@ timm
 einops
 segmentation_models_pytorch
 albumentations
-monai
+monai==0.8.1
 pytorch-lightning
 click
 seaborn
