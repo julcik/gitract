@@ -123,7 +123,7 @@ def train(
                     pval = chp[pname]
                     model_dict[pname] = pval.clone().to(model_dict[pname].device)
                 else:
-                    print(f"Ignoring value for {pname}")
+                    print(f"Ignoring value for {pname}, {chp[pname].size()} != {model_dict[pname].size()}")
 
             module.model.load_state_dict(model_dict)
             print("Model pretrain loaded")
