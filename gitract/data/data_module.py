@@ -284,8 +284,7 @@ class LitDataModule3d(LitDataModule):
             # monai.transforms.RandRotate90d(keys=["image", "masks"], prob=0.5),
             monai.transforms.RandRotated(keys=["image", "masks"], range_x=5, range_y=1, prob=0.2),
             monai.transforms.RandZoomd(keys=["image", "masks"], prob=0.2, min_zoom=0.8, max_zoom=1.2),
-            monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3),
-                                            prob=0.2),
+            monai.transforms.Rand2DElasticd(keys=["image", "masks"], magnitude_range=(0, 1), spacing=(0.3, 0.3), prob=0.2),
             #
             # monai.transforms.CropForegroundd(keys=["image", "masks"], source_key="image"),
             # monai.transforms.RandCropByPosNegLabeld(

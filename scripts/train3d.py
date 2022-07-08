@@ -150,7 +150,7 @@ def train(
                        every_n_epochs=10
                    ),
         ],
-        val_check_interval=10,
+        check_val_every_n_epoch=20,
 
     )
 
