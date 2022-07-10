@@ -55,6 +55,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--fold', default=0)
 @click.option('--cache_rate_train', default=0.7)
 @click.option('--cache_rate_val', default=0.5)
+@click.option('--resume_from_checkpoint', default=None)
 def train(
         out_dir,
         data_path: str,
@@ -76,7 +77,8 @@ def train(
         checkpoint_path: Optional[str] = None,
         fold: int = 0,
         cache_rate_train: float = 0.7,
-        cache_rate_val: float = 0.5
+        cache_rate_val: float = 0.5,
+        resume_from_checkpoint: Optional[str] = None
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
@@ -151,6 +153,7 @@ def train(
                    ),
         ],
         check_val_every_n_epoch=20,
+        resume_from_checkpoint=resume_from_checkpoint
 
     )
 
