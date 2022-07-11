@@ -50,6 +50,7 @@ DEBUG = False # Debug complete pipeline
 @click.option('--device', default=DEVICE)
 @click.option('--model', default="smpUnet")
 @click.option('--spatial_size', default=SPATIAL_SIZE)
+@click.option('--depth_size', default=96)
 @click.option('--background', default=False)
 @click.option('--checkpoint_path', default=None)
 @click.option('--fold', default=0)
@@ -73,6 +74,7 @@ def train(
         random_seed: int = RANDOM_SEED,
         model: str = "smpUnet",
         spatial_size: int = SPATIAL_SIZE,
+        depth_size: int = 96,
         background: bool = True,
         checkpoint_path: Optional[str] = None,
         fold: int = 0,
@@ -82,7 +84,7 @@ def train(
 ):
     out_dir = Path(out_dir)
     pl.seed_everything(random_seed)
-    spatial_size = [spatial_size, spatial_size, 96]
+    spatial_size = [spatial_size, spatial_size, depth_size]
 
     data_module = LitDataModule3d(
         data_path=Path(data_path),
